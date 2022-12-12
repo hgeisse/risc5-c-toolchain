@@ -142,6 +142,8 @@ module risc5(clk_in,
   wire ram_ack;				// ram acknowledge
   // vid
   wire vid_stb;				// video buffer strobe
+  // vid_16
+  wire vid_16_stb;			// video buffer strobe
   // i/o
   wire i_o_stb;				// i/o strobe
   // tmr
@@ -251,6 +253,24 @@ module risc5(clk_in,
     .stb(vid_stb),
     .we(bus_we),
     .addr(bus_addr[16:2]),
+    .data_in(bus_dout[31:0]),
+//    .hsync(vga_hsync),
+//    .vsync(vga_vsync),
+//    .pxclk(vga_clk),
+//    .sync_n(vga_sync_n),
+//    .blank_n(vga_blank_n),
+//    .r(vga_r[7:0]),
+//    .g(vga_g[7:0]),
+//    .b(vga_b[7:0])
+  );
+
+  vid_16 vid_16_0(
+    .pclk(pclk),
+    .clk(clk),
+    .rst(rst),
+    .stb(vid_16_stb),
+    .we(bus_we),
+    .addr(bus_addr[20:2]),
     .data_in(bus_dout[31:0]),
     .hsync(vga_hsync),
     .vsync(vga_vsync),
@@ -398,6 +418,11 @@ module risc5(clk_in,
   assign vid_stb =
     (bus_stb == 1'b1 && bus_addr[23:17] == 7'h7F
                      && bus_addr[16:15] != 2'b11) ? 1'b1 : 1'b0;
+
+  // VID_16: 1536 KB @ 0xE00000
+  assign vid_stb =
+    (bus_stb == 1'b1 && bus_addr[23:21] == 3'h7
+                     && bus_addr[20:19] != 2'b11) ? 1'b1 : 1'b0;
 
   // I/O: 64 bytes (16 words) @ 0xFFFFC0
   assign i_o_stb =
