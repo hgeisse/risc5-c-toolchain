@@ -253,7 +253,7 @@ module risc5(clk_in,
     .stb(vid_stb),
     .we(bus_we),
     .addr(bus_addr[16:2]),
-    .data_in(bus_dout[31:0]),
+    .data_in(bus_dout[31:0])
 //    .hsync(vga_hsync),
 //    .vsync(vga_vsync),
 //    .pxclk(vga_clk),
@@ -420,7 +420,7 @@ module risc5(clk_in,
                      && bus_addr[16:15] != 2'b11) ? 1'b1 : 1'b0;
 
   // VID_16: 1536 KB @ 0xE00000
-  assign vid_stb =
+  assign vid_16_stb =
     (bus_stb == 1'b1 && bus_addr[23:21] == 3'h7
                      && bus_addr[20:19] != 2'b11) ? 1'b1 : 1'b0;
 

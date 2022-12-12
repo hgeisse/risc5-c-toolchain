@@ -100,10 +100,18 @@ module vid_16(pclk, clk, rst,
 
   // stage 2: video memory access
 
+  reg [14:0] viddat_2;
   reg hblnk_2;
   reg hsync_2;
   reg vblnk_2;
   reg vsync_2;
+
+  always @(posedge clk) begin
+    viddat_2[14:0] <= { 5'b10000, 5'b11011, 5'b11011 };
+    viddat_2[14:0] <= { hcount_1[4:2], 2'b00,
+                        vcount_1[4:2], 2'b00,
+                        hcount_1[7:5], 2'b00 };
+  end
 
   always @(posedge pclk) begin
     hblnk_2 <= hblnk_1;
@@ -124,8 +132,8 @@ module vid_16(pclk, clk, rst,
   assign pxclk = pclk;
   assign sync_n = 1'b0;
   assign blank_n = ~hblnk_2 & ~vblnk_2;
-  assign r[7:0] = ~blank_n ? 8'h00 : 8'h7C;
-  assign g[7:0] = ~blank_n ? 8'h00 : 8'hD4;
-  assign b[7:0] = ~blank_n ? 8'h00 : 8'hD6;
+  assign r[7:0] = ~blank_n ? 8'h00 : { viddat_2[14:10], 3'b000 };
+  assign g[7:0] = ~blank_n ? 8'h00 : { viddat_2[ 9: 5], 3'b000 };
+  assign b[7:0] = ~blank_n ? 8'h00 : { viddat_2[ 4: 0], 3'b000 };
 
 endmodule

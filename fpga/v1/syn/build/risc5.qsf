@@ -484,6 +484,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to lcd_rs
 set_location_assignment PIN_M1 -to lcd_rw
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to lcd_rw
 
+set_global_assignment -name VERILOG_FILE ../src/vid_16/vid_16.v
 set_global_assignment -name VERILOG_FILE ../src/bsw/bsw.v
 set_global_assignment -name VERILOG_FILE ../src/hpt/hpt.v
 set_global_assignment -name VERILOG_FILE ../src/lcd/lcd.v
