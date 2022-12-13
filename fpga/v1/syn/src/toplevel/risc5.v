@@ -55,7 +55,14 @@ module risc5(clk_in,
              lcd_en,
              lcd_rw,
              lcd_rs,
-             lcd_data
+             lcd_data,
+             sram_addr,
+             sram_dq,
+             sram_ce_n,
+             sram_oe_n,
+             sram_we_n,
+             sram_ub_n,
+             sram_lb_n
             );
 
     // clock and reset
@@ -116,6 +123,14 @@ module risc5(clk_in,
     output lcd_rw;
     output lcd_rs;
     inout [7:0] lcd_data;
+    // SRAM
+    output [19:0] sram_addr;
+    inout [15:0] sram_dq;
+    output sram_ce_n;
+    output sram_oe_n;
+    output sram_we_n;
+    output sram_ub_n;
+    output sram_lb_n;
 
   // clk_rst
   wire clk_ok;				// clocks stable
@@ -272,6 +287,13 @@ module risc5(clk_in,
     .we(bus_we),
     .addr(bus_addr[20:2]),
     .data_in(bus_dout[31:0]),
+    .sram_addr(sram_addr[19:0]),
+    .sram_dq(sram_dq[15:0]),
+    .sram_ce_n(sram_ce_n),
+    .sram_oe_n(sram_oe_n),
+    .sram_we_n(sram_we_n),
+    .sram_ub_n(sram_ub_n),
+    .sram_lb_n(sram_lb_n),
     .hsync(vga_hsync),
     .vsync(vga_vsync),
     .pxclk(vga_clk),

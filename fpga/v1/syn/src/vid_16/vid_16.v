@@ -9,6 +9,9 @@
 
 module vid_16(pclk, clk, rst,
               stb, we, addr, data_in,
+              sram_addr, sram_dq, sram_ce_n,
+              sram_oe_n, sram_we_n,
+              sram_ub_n, sram_lb_n,
               hsync, vsync, pxclk,
               sync_n, blank_n, r, g, b);
     // internal interface
@@ -20,6 +23,13 @@ module vid_16(pclk, clk, rst,
     input [18:0] addr;
     input [31:0] data_in;
     // external SRAM interface
+    output [19:0] sram_addr;
+    inout [15:0] sram_dq;
+    output sram_ce_n;
+    output sram_oe_n;
+    output sram_we_n;
+    output sram_ub_n;
+    output sram_lb_n;
     // external video interface
     output reg hsync;
     output reg vsync;
@@ -47,6 +57,8 @@ module vid_16(pclk, clk, rst,
   reg [9:0] vcount_1;
   reg vblnk_1;
   reg vsync_1;
+
+  wire [19:0] fb_rd_addr_1;
 
   always @(posedge pclk) begin
     if (rst) begin
@@ -98,20 +110,35 @@ module vid_16(pclk, clk, rst,
     end
   end
 
+  assign fb_rd_addr_1[19:0] = { vcount_1[9:0], hcount_1[9:0] };
+
   // stage 2: video memory access
 
-  reg [14:0] viddat_2;
+  wire [15:0] fb_rd_data_2;
+
   reg hblnk_2;
   reg hsync_2;
   reg vblnk_2;
   reg vsync_2;
 
-  always @(posedge clk) begin
-    viddat_2[14:0] <= { 5'b10000, 5'b11011, 5'b11011 };
-    viddat_2[14:0] <= { hcount_1[4:2], 2'b00,
-                        vcount_1[4:2], 2'b00,
-                        hcount_1[7:5], 2'b00 };
-  end
+  frame_buffer frame_buffer_0(
+    .pclk(pclk),
+    .rd_addr(fb_rd_addr_1[19:0]),
+    .rd_data(fb_rd_data_2[15:0]),
+    .sram_addr(sram_addr[19:0]),
+    .sram_dq(sram_dq[15:0]),
+    .sram_ce_n(sram_ce_n),
+    .sram_oe_n(sram_oe_n),
+    .sram_we_n(sram_we_n),
+    .sram_ub_n(sram_ub_n),
+    .sram_lb_n(sram_lb_n)
+  );
+
+//  always @(posedge pclk) begin
+//    fb_rd_data_2[14:0] <= { hcount_1[4:2], 2'b00,
+//                            vcount_1[4:2], 2'b00,
+//                            hcount_1[7:5], 2'b00 };
+//  end
 
   always @(posedge pclk) begin
     hblnk_2 <= hblnk_1;
@@ -132,8 +159,41 @@ module vid_16(pclk, clk, rst,
   assign pxclk = pclk;
   assign sync_n = 1'b0;
   assign blank_n = ~hblnk_2 & ~vblnk_2;
-  assign r[7:0] = ~blank_n ? 8'h00 : { viddat_2[14:10], 3'b000 };
-  assign g[7:0] = ~blank_n ? 8'h00 : { viddat_2[ 9: 5], 3'b000 };
-  assign b[7:0] = ~blank_n ? 8'h00 : { viddat_2[ 4: 0], 3'b000 };
+  assign r[7:0] = ~blank_n ? 8'h00 : { fb_rd_data_2[14:10], 3'b000 };
+  assign g[7:0] = ~blank_n ? 8'h00 : { fb_rd_data_2[ 9: 5], 3'b000 };
+  assign b[7:0] = ~blank_n ? 8'h00 : { fb_rd_data_2[ 4: 0], 3'b000 };
+
+endmodule
+
+
+module frame_buffer(pclk, rd_addr, rd_data,
+                    sram_addr, sram_dq, sram_ce_n,
+                    sram_oe_n, sram_we_n,
+                    sram_ub_n, sram_lb_n);
+    // internal write interface
+    // internal read interface
+    input pclk;
+    input [19:0] rd_addr;
+    output reg [15:0] rd_data;
+    // external SRAM interface
+    output [19:0] sram_addr;
+    inout [15:0] sram_dq;
+    output sram_ce_n;
+    output sram_oe_n;
+    output sram_we_n;
+    output sram_ub_n;
+    output sram_lb_n;
+
+  assign sram_addr[19:0] = rd_addr[19:0];
+
+  always @(posedge pclk) begin
+    rd_data[15:0] <= sram_dq[15:0];
+  end
+
+  assign sram_ce_n = 1'b0;
+  assign sram_oe_n = 1'b0;
+  assign sram_we_n = 1'b1;
+  assign sram_ub_n = 1'b0;
+  assign sram_lb_n = 1'b0;
 
 endmodule
