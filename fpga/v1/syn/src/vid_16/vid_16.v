@@ -20,7 +20,7 @@ module vid_16(pclk, clk, rst,
     input rst;
     input stb;
     input we;
-    input [18:0] addr;
+    input [19:0] addr;
     input [31:0] data_in;
     // external SRAM interface
     output [19:0] sram_addr;
@@ -43,6 +43,44 @@ module vid_16(pclk, clk, rst,
   //----------------------------
   // processor interface
   //----------------------------
+
+  wire [15:0] color_16;
+
+  reg mp_wr;
+  reg [19:0] fb_wr_addr;
+  reg [15:0] fb_wr_data;
+  reg [1:0] fb_state;
+  wire fb_wr;
+
+  assign color_16[15:0] =
+    { 1'b0, data_in[23:19], data_in[15:11], data_in[7:3] };
+
+  always @(posedge clk) begin
+    mp_wr <= stb & we;
+    if (stb & we) begin
+      fb_wr_addr[19:0] <= addr[19:0];
+      fb_wr_data[15:0] <= color_16[15:0];
+    end
+  end
+
+  always @(posedge pclk) begin
+    if (rst) begin
+      fb_state[1:0] <= 2'b00;
+    end else begin
+      case (fb_state[1:0])
+        2'b00:
+          fb_state[1:0] <= mp_wr ? 2'b01 : 2'b00;
+        2'b01:
+          fb_state[1:0] <= 2'b10;
+        2'b10:
+          fb_state[1:0] <= mp_wr ? 2'b10 : 2'b00;
+        default:
+          fb_state[1:0] <= 2'b00;
+      endcase
+    end
+  end
+
+  assign fb_wr = (fb_state[1:0] == 2'b01);
 
   //----------------------------
   // monitor interface
@@ -123,6 +161,9 @@ module vid_16(pclk, clk, rst,
 
   frame_buffer frame_buffer_0(
     .pclk(pclk),
+    .wr_addr(fb_wr_addr[19:0]),
+    .wr_data(fb_wr_data[15:0]),
+    .wr(fb_wr),
     .rd_addr(fb_rd_addr_1[19:0]),
     .rd_data(fb_rd_data_2[15:0]),
     .sram_addr(sram_addr[19:0]),
@@ -166,13 +207,18 @@ module vid_16(pclk, clk, rst,
 endmodule
 
 
-module frame_buffer(pclk, rd_addr, rd_data,
+module frame_buffer(pclk,
+                    wr_addr, wr_data, wr,
+                    rd_addr, rd_data,
                     sram_addr, sram_dq, sram_ce_n,
                     sram_oe_n, sram_we_n,
                     sram_ub_n, sram_lb_n);
-    // internal write interface
-    // internal read interface
     input pclk;
+    // internal write interface
+    input [19:0] wr_addr;
+    input [15:0] wr_data;
+    input wr;
+    // internal read interface
     input [19:0] rd_addr;
     output reg [15:0] rd_data;
     // external SRAM interface
@@ -184,15 +230,17 @@ module frame_buffer(pclk, rd_addr, rd_data,
     output sram_ub_n;
     output sram_lb_n;
 
-  assign sram_addr[19:0] = rd_addr[19:0];
+  assign sram_addr[19:0] = wr ? wr_addr[19:0] : rd_addr[19:0];
 
   always @(posedge pclk) begin
     rd_data[15:0] <= sram_dq[15:0];
   end
 
+  assign sram_dq[15:0] = wr ? wr_data[15:0] : 16'hzzzz;
+
   assign sram_ce_n = 1'b0;
   assign sram_oe_n = 1'b0;
-  assign sram_we_n = 1'b1;
+  assign sram_we_n = ~wr;
   assign sram_ub_n = 1'b0;
   assign sram_lb_n = 1'b0;
 

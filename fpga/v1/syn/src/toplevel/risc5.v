@@ -285,7 +285,7 @@ module risc5(clk_in,
     .rst(rst),
     .stb(vid_16_stb),
     .we(bus_we),
-    .addr(bus_addr[20:2]),
+    .addr(bus_addr[21:2]),
     .data_in(bus_dout[31:0]),
     .sram_addr(sram_addr[19:0]),
     .sram_dq(sram_dq[15:0]),
@@ -441,10 +441,10 @@ module risc5(clk_in,
     (bus_stb == 1'b1 && bus_addr[23:17] == 7'h7F
                      && bus_addr[16:15] != 2'b11) ? 1'b1 : 1'b0;
 
-  // VID_16: 1536 KB @ 0xE00000
+  // VID_16: 3 MB @ 0xC00000
   assign vid_16_stb =
-    (bus_stb == 1'b1 && bus_addr[23:21] == 3'h7
-                     && bus_addr[20:19] != 2'b11) ? 1'b1 : 1'b0;
+    (bus_stb == 1'b1 && bus_addr[23:22] == 2'b11
+                     && bus_addr[21:20] != 2'b11) ? 1'b1 : 1'b0;
 
   // I/O: 64 bytes (16 words) @ 0xFFFFC0
   assign i_o_stb =
