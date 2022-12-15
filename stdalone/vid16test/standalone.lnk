@@ -1,0 +1,24 @@
+#
+# standalone.lnk -- linker script for a standalone program
+#
+
+ENTRY _bcode;
+
+. = 0x000000;
+OSEG .code [APX] {
+  _bcode = .;
+  ISEG .code;
+  _ecode = .;
+}
+
+OSEG .data [APW] {
+  _bdata = .;
+  ISEG .data;
+  _edata = .;
+}
+
+OSEG .bss [AW] {
+  _bbss = .;
+  ISEG .bss;
+  _ebss = .;
+}
