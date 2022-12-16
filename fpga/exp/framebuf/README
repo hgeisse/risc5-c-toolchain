@@ -1,0 +1,7 @@
+Explore the design of a video frame buffer that is clocked
+with 75 MHz by the read-out logic, but should be written
+by the microprocessor, which runs at 50 MHz. The dual-ported
+block RAM inside the FPGA cannot be used, because it is
+too small. Assume that the clocks are not totally unrelated,
+but are produced by a digital clock manager, which aligns
+raising clock edges if possible.
