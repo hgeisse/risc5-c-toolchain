@@ -34,10 +34,13 @@
 #define MSEC_PER_CHAR	(10 * (1000.0 / BAUD_RATE))
 #define INST_PER_CHAR	((int)(INST_PER_MSEC * MSEC_PER_CHAR + 0.5))
 
-#define IRQ_HPT		15			/* high prec timer IRQ */
+#define IRQ_HPT_0	15			/* high prec timer 0 IRQ */
+#define IRQ_HPT_1	14			/* high prec timer 1 IRQ */
 #define IRQ_TIMER	11			/* millisec timer IRQ */
-#define IRQ_RS232_RCV	7			/* RS232 receive IRQ */
-#define IRQ_RS232_XMT	6			/* RS232 transmit IRQ */
+#define IRQ_RS232_0_RCV	7			/* RS232 0 receive IRQ */
+#define IRQ_RS232_0_XMT	6			/* RS232 0 transmit IRQ */
+#define IRQ_RS232_1_RCV	5			/* RS232 1 receive IRQ */
+#define IRQ_RS232_1_XMT	4			/* RS232 1 transmit IRQ */
 #define IRQ_BUTTONS	3			/* buttons IRQ */
 
 #define RAM_BASE	0x00000000		/* byte address */
@@ -203,7 +206,7 @@ void initSWLED(Word initialSwitches) {
 /**************************************************************/
 
 /*
- * I/O devices 2, 3: RS232
+ * I/O devices 2, 3: RS232 0
  */
 
 
@@ -214,37 +217,37 @@ void initSWLED(Word initialSwitches) {
 #define SERIAL_XMT_IEN		0x02
 
 
-static FILE *serialIn;
-static FILE *serialOut;
-static Word serialRcvData;
-static Word serialXmtData;
-static Word serialStatus;
-static Word serialControl;
+static FILE *serialIn_0;
+static FILE *serialOut_0;
+static Word serialRcvData_0;
+static Word serialXmtData_0;
+static Word serialStatus_0;
+static Word serialControl_0;
 
 
-void tickSerial(void) {
+void tickRS232_0(void) {
   static int rcvCount = 0;
   static int xmtCount = 0;
   int c;
 
   if (rcvCount++ == INST_PER_CHAR) {
     rcvCount = 0;
-    c = fgetc(serialIn);
+    c = fgetc(serialIn_0);
     if (c != EOF) {
-      serialRcvData = c & 0xFF;
-      serialStatus |= SERIAL_RCV_RDY;
-      if (serialControl & SERIAL_RCV_IEN) {
-        cpuSetInterrupt(IRQ_RS232_RCV);
+      serialRcvData_0 = c & 0xFF;
+      serialStatus_0 |= SERIAL_RCV_RDY;
+      if (serialControl_0 & SERIAL_RCV_IEN) {
+        cpuSetInterrupt(IRQ_RS232_0_RCV);
       }
     }
   }
-  if ((serialStatus & SERIAL_XMT_RDY) == 0) {
+  if ((serialStatus_0 & SERIAL_XMT_RDY) == 0) {
     if (xmtCount++ == INST_PER_CHAR) {
       xmtCount = 0;
-      fputc(serialXmtData & 0xFF, serialOut);
-      serialStatus |= SERIAL_XMT_RDY;
-      if (serialControl & SERIAL_XMT_IEN) {
-        cpuSetInterrupt(IRQ_RS232_XMT);
+      fputc(serialXmtData_0 & 0xFF, serialOut_0);
+      serialStatus_0 |= SERIAL_XMT_RDY;
+      if (serialControl_0 & SERIAL_XMT_IEN) {
+        cpuSetInterrupt(IRQ_RS232_0_XMT);
       }
     }
   }
@@ -256,12 +259,12 @@ void tickSerial(void) {
  *     receiver data
  *     { 24'bx, rcv_data[7:0] }
  */
-Word readRS232data(void) {
-  serialStatus &= ~SERIAL_RCV_RDY;
-  if (serialControl & SERIAL_RCV_IEN) {
-    cpuResetInterrupt(IRQ_RS232_RCV);
+Word readRS232data_0(void) {
+  serialStatus_0 &= ~SERIAL_RCV_RDY;
+  if (serialControl_0 & SERIAL_RCV_IEN) {
+    cpuResetInterrupt(IRQ_RS232_0_RCV);
   }
-  return serialRcvData;
+  return serialRcvData_0;
 }
 
 
@@ -270,11 +273,11 @@ Word readRS232data(void) {
  *     transmitter data
  *     { 24'bx, xmt_data[7:0] }
  */
-void writeRS232data(Word data) {
-  serialXmtData = data & 0xFF;
-  serialStatus &= ~SERIAL_XMT_RDY;
-  if (serialControl & SERIAL_XMT_IEN) {
-    cpuResetInterrupt(IRQ_RS232_XMT);
+void writeRS232data_0(Word data) {
+  serialXmtData_0 = data & 0xFF;
+  serialStatus_0 &= ~SERIAL_XMT_RDY;
+  if (serialControl_0 & SERIAL_XMT_IEN) {
+    cpuResetInterrupt(IRQ_RS232_0_XMT);
   }
 }
 
@@ -284,8 +287,8 @@ void writeRS232data(Word data) {
  *     status
  *     { 30'bx, xmt_rdy, rcv_rdy }
  */
-Word readRS232ctrl(void) {
-  return serialStatus;
+Word readRS232ctrl_0(void) {
+  return serialStatus_0;
 }
 
 
@@ -303,41 +306,41 @@ Word readRS232ctrl(void) {
  *     110     57600
  *     111     115200
  */
-void writeRS232ctrl(Word data) {
+void writeRS232ctrl_0(Word data) {
   /* handle interrupt control */
   if (data & SERIAL_RCV_IEN) {
-    serialControl |= SERIAL_RCV_IEN;
+    serialControl_0 |= SERIAL_RCV_IEN;
   } else {
-    serialControl &= ~SERIAL_RCV_IEN;
+    serialControl_0 &= ~SERIAL_RCV_IEN;
   }
-  if ((serialControl & SERIAL_RCV_IEN) &&
-      (serialStatus & SERIAL_RCV_RDY)) {
-    cpuSetInterrupt(IRQ_RS232_RCV);
+  if ((serialControl_0 & SERIAL_RCV_IEN) &&
+      (serialStatus_0 & SERIAL_RCV_RDY)) {
+    cpuSetInterrupt(IRQ_RS232_0_RCV);
   } else {
-    cpuResetInterrupt(IRQ_RS232_RCV);
+    cpuResetInterrupt(IRQ_RS232_0_RCV);
   }
   if (data & SERIAL_XMT_IEN) {
-    serialControl |= SERIAL_XMT_IEN;
+    serialControl_0 |= SERIAL_XMT_IEN;
   } else {
-    serialControl &= ~SERIAL_XMT_IEN;
+    serialControl_0 &= ~SERIAL_XMT_IEN;
   }
-  if ((serialControl & SERIAL_XMT_IEN) &&
-      (serialStatus & SERIAL_XMT_RDY)) {
-    cpuSetInterrupt(IRQ_RS232_XMT);
+  if ((serialControl_0 & SERIAL_XMT_IEN) &&
+      (serialStatus_0 & SERIAL_XMT_RDY)) {
+    cpuSetInterrupt(IRQ_RS232_0_XMT);
   } else {
-    cpuResetInterrupt(IRQ_RS232_XMT);
+    cpuResetInterrupt(IRQ_RS232_0_XMT);
   }
   /* ignore setting the baud rate in simulation */
 }
 
 
-void initRS232(void) {
+void initRS232_0(void) {
   int master;
   char slavePath[100];
   FILE *serdevFile;
 
-  serialIn = NULL;
-  serialOut = NULL;
+  serialIn_0 = NULL;
+  serialOut_0 = NULL;
   master = open("/dev/ptmx", O_RDWR | O_NONBLOCK);
   if (master < 0) {
     error("cannot open pseudo terminal master for serial line");
@@ -345,7 +348,7 @@ void initRS232(void) {
   grantpt(master);
   unlockpt(master);
   strcpy(slavePath, ptsname(master));
-  printf("The serial line can be accessed by opening device '%s'.\n",
+  printf("Serial line 0 can be accessed by opening device '%s'.\n",
          slavePath);
   serdevFile = fopen(SERDEV_FILE, "w");
   if (serdevFile == NULL) {
@@ -355,13 +358,13 @@ void initRS232(void) {
   fclose(serdevFile);
   printf("This path was also written to file '%s'.\n", SERDEV_FILE);
   fcntl(master, F_SETFL, O_NONBLOCK);
-  serialIn = fdopen(master, "r");
-  setvbuf(serialIn, NULL, _IONBF, 0);
-  serialOut = fdopen(master, "w");
-  setvbuf(serialOut, NULL, _IONBF, 0);
-  while (fgetc(serialIn) != EOF) ;
-  serialStatus = SERIAL_XMT_RDY;
-  serialControl = 0;
+  serialIn_0 = fdopen(master, "r");
+  setvbuf(serialIn_0, NULL, _IONBF, 0);
+  serialOut_0 = fdopen(master, "w");
+  setvbuf(serialOut_0, NULL, _IONBF, 0);
+  while (fgetc(serialIn_0) != EOF) ;
+  serialStatus_0 = SERIAL_XMT_RDY;
+  serialControl_0 = 0;
 }
 
 
@@ -821,10 +824,10 @@ Word readIO(int dev) {
       data = readSwitches();
       break;
     case 2:
-      data = readRS232data();
+      data = readRS232data_0();
       break;
     case 3:
-      data = readRS232ctrl();
+      data = readRS232ctrl_0();
       break;
     case 4:
       data = readSPIdata();
@@ -865,10 +868,10 @@ void writeIO(int dev, Word data) {
       writeLEDs(data);
       break;
     case 2:
-      writeRS232data(data);
+      writeRS232data_0(data);
       break;
     case 3:
-      writeRS232ctrl(data);
+      writeRS232ctrl_0(data);
       break;
     case 4:
       writeSPIdata(data);
@@ -902,7 +905,7 @@ void writeIO(int dev, Word data) {
 /**************************************************************/
 
 /*
- * Extended I/O devices 0, 1: high precision timer
+ * Extended I/O devices 0, 1: high precision timer 0
  */
 
 
@@ -912,26 +915,26 @@ void writeIO(int dev, Word data) {
 #define HPT_SCALING		100
 
 
-static Word HPTcounter;
-static Word HPTdivisor;
-static Word HPTstatus;
-static Word HPTcontrol;
+static Word HPTcounter_0;
+static Word HPTdivisor_0;
+static Word HPTstatus_0;
+static Word HPTcontrol_0;
 
 
-static void tickHPTcounter(int clockCycles) {
-  if (HPTcounter <= clockCycles) {
-    HPTcounter += HPTdivisor - clockCycles;
-    HPTstatus |= HPT_EXPIRED;
-    if (HPTcontrol & HPT_IEN) {
-      cpuSetInterrupt(IRQ_HPT);
+static void tickHPTcounter_0(int clockCycles) {
+  if (HPTcounter_0 <= clockCycles) {
+    HPTcounter_0 += HPTdivisor_0 - clockCycles;
+    HPTstatus_0 |= HPT_EXPIRED;
+    if (HPTcontrol_0 & HPT_IEN) {
+      cpuSetInterrupt(IRQ_HPT_0);
     }
   } else {
-    HPTcounter -= clockCycles;
+    HPTcounter_0 -= clockCycles;
   }
 }
 
 
-void tickHPT(void) {
+void tickHPT_0(void) {
   static int accumulator = 0;
   int clockCycles;
 
@@ -946,7 +949,7 @@ void tickHPT(void) {
     clockCycles++;
   }
   if (clockCycles > 0) {
-    tickHPTcounter(clockCycles);
+    tickHPTcounter_0(clockCycles);
   }
 }
 
@@ -956,8 +959,8 @@ void tickHPT(void) {
  *     HPT counter
  *     { data[31:0] }
  */
-Word readHPTdata(void) {
-  return HPTcounter;
+Word readHPTdata_0(void) {
+  return HPTcounter_0;
 }
 
 
@@ -966,10 +969,10 @@ Word readHPTdata(void) {
  *     HPT divisor
  *     { data[31:0] }
  */
-void writeHPTdata(Word data) {
-  HPTdivisor = data;
+void writeHPTdata_0(Word data) {
+  HPTdivisor_0 = data;
   /* must also reset the counter */
-  HPTcounter = data;
+  HPTcounter_0 = data;
 }
 
 
@@ -978,13 +981,13 @@ void writeHPTdata(Word data) {
  *     HPT status
  *     { 31'bx, expired }
  */
-Word readHPTctrl(void) {
+Word readHPTctrl_0(void) {
   Word data;
 
-  data = HPTstatus;
-  HPTstatus &= ~HPT_EXPIRED;
-  if (HPTcontrol & HPT_IEN) {
-    cpuResetInterrupt(IRQ_HPT);
+  data = HPTstatus_0;
+  HPTstatus_0 &= ~HPT_EXPIRED;
+  if (HPTcontrol_0 & HPT_IEN) {
+    cpuResetInterrupt(IRQ_HPT_0);
   }
   return data;
 }
@@ -995,26 +998,26 @@ Word readHPTctrl(void) {
  *     HPT ctrl
  *     { 31'bx, ien }
  */
-void writeHPTctrl(Word data) {
+void writeHPTctrl_0(Word data) {
   if (data & HPT_IEN) {
-    HPTcontrol |= HPT_IEN;
+    HPTcontrol_0 |= HPT_IEN;
   } else {
-    HPTcontrol &= ~HPT_IEN;
+    HPTcontrol_0 &= ~HPT_IEN;
   }
-  if ((HPTcontrol & HPT_IEN) &&
-      (HPTstatus & HPT_EXPIRED)) {
-    cpuSetInterrupt(IRQ_HPT);
+  if ((HPTcontrol_0 & HPT_IEN) &&
+      (HPTstatus_0 & HPT_EXPIRED)) {
+    cpuSetInterrupt(IRQ_HPT_0);
   } else {
-    cpuResetInterrupt(IRQ_HPT);
+    cpuResetInterrupt(IRQ_HPT_0);
   }
 }
 
 
-void initHPT(void) {
-  HPTdivisor = 0xFFFFFFFF;
-  HPTcounter = 0xFFFFFFFF;
-  HPTstatus = 0;
-  HPTcontrol = 0;
+void initHPT_0(void) {
+  HPTdivisor_0 = 0xFFFFFFFF;
+  HPTcounter_0 = 0xFFFFFFFF;
+  HPTstatus_0 = 0;
+  HPTcontrol_0 = 0;
 }
 
 
@@ -1446,6 +1449,277 @@ void initBTNSWT(Word initialBtnSwt) {
 /**************************************************************/
 
 /*
+ * Extended I/O devices 6, 7: high precision timer 1
+ */
+
+
+static Word HPTcounter_1;
+static Word HPTdivisor_1;
+static Word HPTstatus_1;
+static Word HPTcontrol_1;
+
+
+static void tickHPTcounter_1(int clockCycles) {
+  if (HPTcounter_1 <= clockCycles) {
+    HPTcounter_1 += HPTdivisor_1 - clockCycles;
+    HPTstatus_1 |= HPT_EXPIRED;
+    if (HPTcontrol_1 & HPT_IEN) {
+      cpuSetInterrupt(IRQ_HPT_1);
+    }
+  } else {
+    HPTcounter_1 -= clockCycles;
+  }
+}
+
+
+void tickHPT_1(void) {
+  static int accumulator = 0;
+  int clockCycles;
+
+  /*
+   * approximate possibly non-integer CC_PER_INST by the
+   * integer ratio (CC_PER_INST * HPT_SCALING) / HPT_SCALING
+   */
+  accumulator += (int) (CC_PER_INST * HPT_SCALING + 0.5);
+  clockCycles = 0;
+  while (accumulator >= HPT_SCALING) {
+    accumulator -= HPT_SCALING;
+    clockCycles++;
+  }
+  if (clockCycles > 0) {
+    tickHPTcounter_1(clockCycles);
+  }
+}
+
+
+/*
+ * read extended device 0:
+ *     HPT counter
+ *     { data[31:0] }
+ */
+Word readHPTdata_1(void) {
+  return HPTcounter_1;
+}
+
+
+/*
+ * write extended device 0:
+ *     HPT divisor
+ *     { data[31:0] }
+ */
+void writeHPTdata_1(Word data) {
+  HPTdivisor_1 = data;
+  /* must also reset the counter */
+  HPTcounter_1 = data;
+}
+
+
+/*
+ * read extended device 1:
+ *     HPT status
+ *     { 31'bx, expired }
+ */
+Word readHPTctrl_1(void) {
+  Word data;
+
+  data = HPTstatus_1;
+  HPTstatus_1 &= ~HPT_EXPIRED;
+  if (HPTcontrol_1 & HPT_IEN) {
+    cpuResetInterrupt(IRQ_HPT_1);
+  }
+  return data;
+}
+
+
+/*
+ * write extended device 1:
+ *     HPT ctrl
+ *     { 31'bx, ien }
+ */
+void writeHPTctrl_1(Word data) {
+  if (data & HPT_IEN) {
+    HPTcontrol_1 |= HPT_IEN;
+  } else {
+    HPTcontrol_1 &= ~HPT_IEN;
+  }
+  if ((HPTcontrol_1 & HPT_IEN) &&
+      (HPTstatus_1 & HPT_EXPIRED)) {
+    cpuSetInterrupt(IRQ_HPT_1);
+  } else {
+    cpuResetInterrupt(IRQ_HPT_1);
+  }
+}
+
+
+void initHPT_1(void) {
+  HPTdivisor_1 = 0xFFFFFFFF;
+  HPTcounter_1 = 0xFFFFFFFF;
+  HPTstatus_1 = 0;
+  HPTcontrol_1 = 0;
+}
+
+
+/**************************************************************/
+
+/*
+ * Extended I/O devices 8, 9: RS232 1
+ */
+
+
+static FILE *serialIn_1;
+static FILE *serialOut_1;
+static Word serialRcvData_1;
+static Word serialXmtData_1;
+static Word serialStatus_1;
+static Word serialControl_1;
+
+
+void tickRS232_1(void) {
+  static int rcvCount = 0;
+  static int xmtCount = 0;
+  int c;
+
+  if (rcvCount++ == INST_PER_CHAR) {
+    rcvCount = 0;
+    c = fgetc(serialIn_1);
+    if (c != EOF) {
+      serialRcvData_1 = c & 0xFF;
+      serialStatus_1 |= SERIAL_RCV_RDY;
+      if (serialControl_1 & SERIAL_RCV_IEN) {
+        cpuSetInterrupt(IRQ_RS232_1_RCV);
+      }
+    }
+  }
+  if ((serialStatus_1 & SERIAL_XMT_RDY) == 0) {
+    if (xmtCount++ == INST_PER_CHAR) {
+      xmtCount = 0;
+      fputc(serialXmtData_1 & 0xFF, serialOut_1);
+      serialStatus_1 |= SERIAL_XMT_RDY;
+      if (serialControl_1 & SERIAL_XMT_IEN) {
+        cpuSetInterrupt(IRQ_RS232_1_XMT);
+      }
+    }
+  }
+}
+
+
+/*
+ * read device 2:
+ *     receiver data
+ *     { 24'bx, rcv_data[7:0] }
+ */
+Word readRS232data_1(void) {
+  serialStatus_1 &= ~SERIAL_RCV_RDY;
+  if (serialControl_1 & SERIAL_RCV_IEN) {
+    cpuResetInterrupt(IRQ_RS232_1_RCV);
+  }
+  return serialRcvData_1;
+}
+
+
+/*
+ * write device 2:
+ *     transmitter data
+ *     { 24'bx, xmt_data[7:0] }
+ */
+void writeRS232data_1(Word data) {
+  serialXmtData_1 = data & 0xFF;
+  serialStatus_1 &= ~SERIAL_XMT_RDY;
+  if (serialControl_1 & SERIAL_XMT_IEN) {
+    cpuResetInterrupt(IRQ_RS232_1_XMT);
+  }
+}
+
+
+/*
+ * read device 3:
+ *     status
+ *     { 30'bx, xmt_rdy, rcv_rdy }
+ */
+Word readRS232ctrl_1(void) {
+  return serialStatus_1;
+}
+
+
+/*
+ * write device 3:
+ *     control
+ *     { set_baud, baud[2:0], 26'bx, xmt_ien, rcv_ien }
+ *     baud    baud rate
+ *     000     2400
+ *     001     4800
+ *     010     9600    (default)
+ *     011     19200
+ *     100     31250   (for MIDI)
+ *     101     38400
+ *     110     57600
+ *     111     115200
+ */
+void writeRS232ctrl_1(Word data) {
+  /* handle interrupt control */
+  if (data & SERIAL_RCV_IEN) {
+    serialControl_1 |= SERIAL_RCV_IEN;
+  } else {
+    serialControl_1 &= ~SERIAL_RCV_IEN;
+  }
+  if ((serialControl_1 & SERIAL_RCV_IEN) &&
+      (serialStatus_1 & SERIAL_RCV_RDY)) {
+    cpuSetInterrupt(IRQ_RS232_1_RCV);
+  } else {
+    cpuResetInterrupt(IRQ_RS232_1_RCV);
+  }
+  if (data & SERIAL_XMT_IEN) {
+    serialControl_1 |= SERIAL_XMT_IEN;
+  } else {
+    serialControl_1 &= ~SERIAL_XMT_IEN;
+  }
+  if ((serialControl_1 & SERIAL_XMT_IEN) &&
+      (serialStatus_1 & SERIAL_XMT_RDY)) {
+    cpuSetInterrupt(IRQ_RS232_1_XMT);
+  } else {
+    cpuResetInterrupt(IRQ_RS232_1_XMT);
+  }
+  /* ignore setting the baud rate in simulation */
+}
+
+
+void initRS232_1(void) {
+  int master;
+  char slavePath[100];
+  FILE *serdevFile;
+
+  serialIn_1 = NULL;
+  serialOut_1 = NULL;
+  master = open("/dev/ptmx", O_RDWR | O_NONBLOCK);
+  if (master < 0) {
+    error("cannot open pseudo terminal master for serial line");
+  }
+  grantpt(master);
+  unlockpt(master);
+  strcpy(slavePath, ptsname(master));
+  printf("Serial line 1 can be accessed by opening device '%s'.\n",
+         slavePath);
+  serdevFile = fopen(SERDEV_FILE, "a");
+  if (serdevFile == NULL) {
+    error("cannot open file for writing serial device path");
+  }
+  fprintf(serdevFile, "%s\n", slavePath);
+  fclose(serdevFile);
+  printf("This path was also written to file '%s'.\n", SERDEV_FILE);
+  fcntl(master, F_SETFL, O_NONBLOCK);
+  serialIn_1 = fdopen(master, "r");
+  setvbuf(serialIn_1, NULL, _IONBF, 0);
+  serialOut_1 = fdopen(master, "w");
+  setvbuf(serialOut_1, NULL, _IONBF, 0);
+  while (fgetc(serialIn_1) != EOF) ;
+  serialStatus_1 = SERIAL_XMT_RDY;
+  serialControl_1 = 0;
+}
+
+
+/**************************************************************/
+
+/*
  * Extended I/O : address of device n = XIO_BASE + 4 * n
  *                this can be expressed in decimal as -4 * (32 - n)
  */
@@ -1456,10 +1730,10 @@ Word readXIO(int dev) {
 
   switch (dev) {
     case 0:
-      data = readHPTdata();
+      data = readHPTdata_0();
       break;
     case 1:
-      data = readHPTctrl();
+      data = readHPTctrl_0();
       break;
     case 2:
       data = readLCDdata();
@@ -1469,6 +1743,18 @@ Word readXIO(int dev) {
       break;
     case 4:
       data = readBTNSWT();
+      break;
+    case 6:
+      data = readHPTdata_1();
+      break;
+    case 7:
+      data = readHPTctrl_1();
+      break;
+    case 8:
+      data = readRS232data_1();
+      break;
+    case 9:
+      data = readRS232ctrl_1();
       break;
     default:
       error("reading from unknown extended I/O device %d", dev);
@@ -1482,10 +1768,10 @@ Word readXIO(int dev) {
 void writeXIO(int dev, Word data) {
   switch (dev) {
     case 0:
-      writeHPTdata(data);
+      writeHPTdata_0(data);
       break;
     case 1:
-      writeHPTctrl(data);
+      writeHPTctrl_0(data);
       break;
     case 2:
       writeLCDdata(data);
@@ -1495,6 +1781,18 @@ void writeXIO(int dev, Word data) {
       break;
     case 4:
       writeBTNSWT(data);
+      break;
+    case 6:
+      writeHPTdata_1(data);
+      break;
+    case 7:
+      writeHPTctrl_1(data);
+      break;
+    case 8:
+      writeRS232data_1(data);
+      break;
+    case 9:
+      writeRS232ctrl_1(data);
       break;
     default:
       error("writing to unknown extended I/O device %d, data = 0x%08X",
@@ -2277,8 +2575,10 @@ void cpuResetBreak(void) {
 
 void cpuStep(void) {
   tickTimer();
-  tickSerial();
-  tickHPT();
+  tickRS232_0();
+  tickRS232_1();
+  tickHPT_0();
+  tickHPT_1();
   execNextInstruction();
   handleInterrupts();
 }
@@ -2288,8 +2588,10 @@ void cpuRun(void) {
   run = true;
   while (run) {
     tickTimer();
-    tickSerial();
-    tickHPT();
+    tickRS232_0();
+    tickRS232_1();
+    tickHPT_0();
+    tickHPT_1();
     execNextInstruction();
     handleInterrupts();
     if (breakSet && pc == breakAddr) {
@@ -3442,11 +3744,13 @@ int main(int argc, char *argv[]) {
   initTimer();
   initSWLED(initialSwitches);
   initBTNSWT(initialSwitches);
-  initRS232();
+  initRS232_0();
+  initRS232_1();
   initSPI(diskName);
   initMouseKeybd();
   initGPIO();
-  initHPT();
+  initHPT_0();
+  initHPT_1();
   initLCD();
   graphInit();
   promInit(promName);

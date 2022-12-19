@@ -11,7 +11,7 @@ start:
 	// interrupts arrive here, at location 4
 intr:
 	MOV	R0,-124		// reset timer interrupt
-	LDW	R0,R0,0		// by reading its counter
+	LDW	R0,R0,0		// by reading its status
 	MOV	R0,leds		// and toggle LED state (LSB)
 	LDW	R1,R0,0
 	XOR	R1,R1,1

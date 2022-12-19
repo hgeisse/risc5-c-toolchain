@@ -1,6 +1,6 @@
 
-High Precision Timer (HPTMR)
-============================
+High Precision Timer 0 (HPTMR)
+==============================
 
 IRQ:  15
 base: 0xFFFF80
@@ -73,6 +73,27 @@ format: { press_ien[3:0], release_ien[3:0], 24'bx }
 Note: I/O device "SWTLED" remains functional also
 
 
+High Precision Timer 1 (HPTMR)
+==============================
+
+IRQ:  14
+base: 0xFFFF98
+
+Other than a different IRQ and a different base address, this
+timer is an exact duplicate of High Precision Timer 0 (see above).
+
+
+Serial Line 1 (RS232)
+=====================
+
+IRQ:  XMT = 4
+      RCV = 5
+base: 0xFFFFA0
+
+Other than different IRQs and a different base address, this
+serial line is an exact duplicate of Serial Line 0 (see below).
+
+
 Millisecond Timer (MSTMR)
 =========================
 
@@ -110,8 +131,8 @@ format: { 24'bx, led[7:0] }
 Note: I/O device "BTNSWT" offers a better interface to buttons
 
 
-Serial Line (RS232)
-===================
+Serial Line 0 (RS232)
+=====================
 
 IRQ:  XMT = 6
       RCV = 7

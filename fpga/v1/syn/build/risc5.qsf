@@ -385,6 +385,10 @@ set_location_assignment PIN_G12 -to rs232_0_rxd
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to rs232_0_rxd
 set_location_assignment PIN_G9 -to rs232_0_txd
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to rs232_0_txd
+set_location_assignment PIN_J13 -to rs232_1_rxd
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to rs232_1_rxd
+set_location_assignment PIN_G14 -to rs232_1_txd
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to rs232_1_txd
 set_location_assignment PIN_G13 -to vga_hsync
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vga_hsync
 set_location_assignment PIN_C13 -to vga_vsync
