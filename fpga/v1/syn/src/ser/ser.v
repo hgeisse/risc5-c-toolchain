@@ -35,10 +35,12 @@ module ser(clk, rst,
   wire rcv_rdy;
   wire [7:0] rcv_data;
   wire xmt_rdy;
+  wire xmt_empty;
 
   reg [15:0] bit_len;
-  reg rcv_ien;
-  reg xmt_ien;
+  reg rcv_rdy_ien;
+  reg xmt_rdy_ien;
+  reg xmt_empty_ien;
 
   assign rd_data = stb & ~we & ~addr;	// read received data
   assign wr_data = stb &  we & ~addr;	// write data to transmit
@@ -61,20 +63,22 @@ module ser(clk, rst,
     .bit_len(bit_len),
     .write(wr_data),
     .ready(xmt_rdy),
+    .empty(xmt_empty),
     .data_in(data_in[7:0]),
     .serial_out(txd)
   );
 
   assign data_out =
     rd_data ? { 24'h000000, rcv_data[7:0] } :
-    rd_ctrl ? { 28'h0000000, 2'b00, xmt_rdy, rcv_rdy } :
+    rd_ctrl ? { 28'h0000000, 1'b0, xmt_empty, xmt_rdy, rcv_rdy } :
     32'h00000000;
 
   always @(posedge clk) begin
     if (rst) begin
       bit_len <= 16'd5208;
-      rcv_ien <= 1'b0;
-      xmt_ien <= 1'b0;
+      rcv_rdy_ien <= 1'b0;
+      xmt_rdy_ien <= 1'b0;
+      xmt_empty_ien <= 1'b0;
     end else begin
       if (wr_ctrl) begin
         if (data_in[31]) begin
@@ -90,15 +94,17 @@ module ser(clk, rst,
             3'h7:  bit_len <= 16'd434;		// 115200 baud
           endcase
         end
-        rcv_ien <= data_in[0];
-        xmt_ien <= data_in[1];
+        rcv_rdy_ien <= data_in[0];
+        xmt_rdy_ien <= data_in[1];
+        xmt_empty_ien <= data_in[2];
       end
     end
   end
 
   assign ack = stb;
 
-  assign rcv_irq = rcv_rdy & rcv_ien;
-  assign xmt_irq = xmt_rdy & xmt_ien;
+  assign rcv_irq = rcv_rdy & rcv_rdy_ien;
+  assign xmt_irq = (xmt_rdy & xmt_rdy_ien) |
+                   (xmt_empty & xmt_empty_ien);
 
 endmodule

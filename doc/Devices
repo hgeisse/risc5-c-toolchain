@@ -152,10 +152,15 @@ format: { 24'bx, xmt_data[7:0] }
 reset xmt interrupt
 
 (C)
-format: { 30'bx, xmt_rdy, rcv_rdy }
+format: { 29'bx, xmt_empty, xmt_rdy, rcv_rdy }
+rcv_rdy indicates:   a byte has been received and can be read
+xmt_rdy indicates:   a byte can be written to the transmitter
+xmt_empty indicates: the transmitter has no more bits to send, i.e.,
+                     it is safe to change transmission parameters
 
 (D)
-format: { set_baud, baud[2:0], 26'bx, xmt_ien, rcv_ien }
+format: { set_baud, baud[2:0], 25'bx,
+          xmt_empty_ien, xmt_rdy_ien, rcv_rdy_ien }
 if set_baud = 0 : ignore the 3 bits defining the baud rate
 if set_baud = 1 : set baud rate according to the following table
    baud     baud rate
@@ -167,6 +172,10 @@ if set_baud = 1 : set baud rate according to the following table
       5     38400
       6     57600
       7     115200
+
+Note: RCV IRQ set <=> (rcv_rdy AND rcv_rdy_ien)
+      XMT IRQ set <=> (xmt_rdy AND xmt_rdy_ien) OR
+                      (xmt_empty AND xmt_empty_ien)
 
 
 Serial Peripheral Interface (SPI)

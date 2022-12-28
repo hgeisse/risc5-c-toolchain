@@ -212,9 +212,11 @@ void initSWLED(Word initialSwitches) {
 
 #define SERIAL_RCV_RDY		0x01
 #define SERIAL_XMT_RDY		0x02
+#define SERIAL_XMT_EMPTY	0x04
 
-#define SERIAL_RCV_IEN		0x01
-#define SERIAL_XMT_IEN		0x02
+#define SERIAL_RCV_RDY_IEN	0x01
+#define SERIAL_XMT_RDY_IEN	0x02
+#define SERIAL_XMT_EMPTY_IEN	0x04
 
 
 static FILE *serialIn_0;
@@ -228,6 +230,7 @@ static Word serialControl_0;
 void tickRS232_0(void) {
   static int rcvCount = 0;
   static int xmtCount = 0;
+  static int emptyCount = 0;
   int c;
 
   if (rcvCount++ == INST_PER_CHAR) {
@@ -236,7 +239,7 @@ void tickRS232_0(void) {
     if (c != EOF) {
       serialRcvData_0 = c & 0xFF;
       serialStatus_0 |= SERIAL_RCV_RDY;
-      if (serialControl_0 & SERIAL_RCV_IEN) {
+      if (serialControl_0 & SERIAL_RCV_RDY_IEN) {
         cpuSetInterrupt(IRQ_RS232_0_RCV);
       }
     }
@@ -244,10 +247,22 @@ void tickRS232_0(void) {
   if ((serialStatus_0 & SERIAL_XMT_RDY) == 0) {
     if (xmtCount++ == INST_PER_CHAR) {
       xmtCount = 0;
+      emptyCount = 0;
       fputc(serialXmtData_0 & 0xFF, serialOut_0);
       serialStatus_0 |= SERIAL_XMT_RDY;
-      if (serialControl_0 & SERIAL_XMT_IEN) {
+      if (serialControl_0 & SERIAL_XMT_RDY_IEN) {
         cpuSetInterrupt(IRQ_RS232_0_XMT);
+      }
+    }
+  } else {
+    if ((serialStatus_0 & SERIAL_XMT_EMPTY) == 0) {
+      // one character delay until transmitter empty
+      if (emptyCount++ == INST_PER_CHAR) {
+        emptyCount = 0;
+        serialStatus_0 |= SERIAL_XMT_EMPTY;
+        if (serialControl_0 & SERIAL_XMT_EMPTY_IEN) {
+          cpuSetInterrupt(IRQ_RS232_0_XMT);
+        }
       }
     }
   }
@@ -261,7 +276,7 @@ void tickRS232_0(void) {
  */
 Word readRS232data_0(void) {
   serialStatus_0 &= ~SERIAL_RCV_RDY;
-  if (serialControl_0 & SERIAL_RCV_IEN) {
+  if (serialControl_0 & SERIAL_RCV_RDY_IEN) {
     cpuResetInterrupt(IRQ_RS232_0_RCV);
   }
   return serialRcvData_0;
@@ -275,8 +290,8 @@ Word readRS232data_0(void) {
  */
 void writeRS232data_0(Word data) {
   serialXmtData_0 = data & 0xFF;
-  serialStatus_0 &= ~SERIAL_XMT_RDY;
-  if (serialControl_0 & SERIAL_XMT_IEN) {
+  serialStatus_0 &= ~(SERIAL_XMT_RDY | SERIAL_XMT_EMPTY);
+  if (serialControl_0 & (SERIAL_XMT_RDY_IEN | SERIAL_XMT_EMPTY_IEN)) {
     cpuResetInterrupt(IRQ_RS232_0_XMT);
   }
 }
@@ -285,7 +300,7 @@ void writeRS232data_0(Word data) {
 /*
  * read device 3:
  *     status
- *     { 30'bx, xmt_rdy, rcv_rdy }
+ *     { 29'bx, xmt_empty, xmt_rdy, rcv_rdy }
  */
 Word readRS232ctrl_0(void) {
   return serialStatus_0;
@@ -295,7 +310,8 @@ Word readRS232ctrl_0(void) {
 /*
  * write device 3:
  *     control
- *     { set_baud, baud[2:0], 26'bx, xmt_ien, rcv_ien }
+ *     { set_baud, baud[2:0], 25'bx,
+ *       xmt_empty_ien, xmt_rdy_ien, rcv_rdy_ien }
  *     baud    baud rate
  *     000     2400
  *     001     4800
@@ -308,24 +324,31 @@ Word readRS232ctrl_0(void) {
  */
 void writeRS232ctrl_0(Word data) {
   /* handle interrupt control */
-  if (data & SERIAL_RCV_IEN) {
-    serialControl_0 |= SERIAL_RCV_IEN;
+  if (data & SERIAL_RCV_RDY_IEN) {
+    serialControl_0 |= SERIAL_RCV_RDY_IEN;
   } else {
-    serialControl_0 &= ~SERIAL_RCV_IEN;
+    serialControl_0 &= ~SERIAL_RCV_RDY_IEN;
   }
-  if ((serialControl_0 & SERIAL_RCV_IEN) &&
+  if ((serialControl_0 & SERIAL_RCV_RDY_IEN) &&
       (serialStatus_0 & SERIAL_RCV_RDY)) {
     cpuSetInterrupt(IRQ_RS232_0_RCV);
   } else {
     cpuResetInterrupt(IRQ_RS232_0_RCV);
   }
-  if (data & SERIAL_XMT_IEN) {
-    serialControl_0 |= SERIAL_XMT_IEN;
+  if (data & SERIAL_XMT_RDY_IEN) {
+    serialControl_0 |= SERIAL_XMT_RDY_IEN;
   } else {
-    serialControl_0 &= ~SERIAL_XMT_IEN;
+    serialControl_0 &= ~SERIAL_XMT_RDY_IEN;
   }
-  if ((serialControl_0 & SERIAL_XMT_IEN) &&
-      (serialStatus_0 & SERIAL_XMT_RDY)) {
+  if (data & SERIAL_XMT_EMPTY_IEN) {
+    serialControl_0 |= SERIAL_XMT_EMPTY_IEN;
+  } else {
+    serialControl_0 &= ~SERIAL_XMT_EMPTY_IEN;
+  }
+  if (((serialControl_0 & SERIAL_XMT_RDY_IEN) &&
+       (serialStatus_0 & SERIAL_XMT_RDY)) ||
+      ((serialControl_0 & SERIAL_XMT_EMPTY_IEN) &&
+       (serialStatus_0 & SERIAL_XMT_EMPTY))) {
     cpuSetInterrupt(IRQ_RS232_0_XMT);
   } else {
     cpuResetInterrupt(IRQ_RS232_0_XMT);
@@ -363,7 +386,7 @@ void initRS232_0(void) {
   serialOut_0 = fdopen(master, "w");
   setvbuf(serialOut_0, NULL, _IONBF, 0);
   while (fgetc(serialIn_0) != EOF) ;
-  serialStatus_0 = SERIAL_XMT_RDY;
+  serialStatus_0 = SERIAL_XMT_RDY | SERIAL_XMT_EMPTY;
   serialControl_0 = 0;
 }
 
@@ -744,7 +767,7 @@ void initMouseKeybd(void) {
  * read device 8:
  *     ignore, return 0
  */
-Word readGPIO_0(void) {
+Word readGPIOdata(void) {
   return 0;
 }
 
@@ -753,7 +776,7 @@ Word readGPIO_0(void) {
  * write device 8:
  *     ignore
  */
-void writeGPIO_0(Word data) {
+void writeGPIOdata(Word data) {
 }
 
 
@@ -761,7 +784,7 @@ void writeGPIO_0(Word data) {
  * read device 9:
  *     ignore, return 0
  */
-Word readGPIO_1(void) {
+Word readGPIOdir(void) {
   return 0;
 }
 
@@ -770,7 +793,7 @@ Word readGPIO_1(void) {
  * write device 9:
  *     ignore
  */
-void writeGPIO_1(Word data) {
+void writeGPIOdir(Word data) {
 }
 
 
@@ -787,9 +810,11 @@ void initGPIO(void) {
 
 /*
  * read device 15:
- *     always return 0
+ *     it is an error to read from the shutdown device
  */
 Word readShutdown(void) {
+  error("read from shutdown device");
+  /* never reached */
   return 0;
 }
 
@@ -842,10 +867,10 @@ Word readIO(int dev) {
       data = readKeybd();
       break;
     case 8:
-      data = readGPIO_0();
+      data = readGPIOdata();
       break;
     case 9:
-      data = readGPIO_1();
+      data = readGPIOdir();
       break;
     case 15:
       data = readShutdown();
@@ -886,10 +911,10 @@ void writeIO(int dev, Word data) {
       writeKeybd(data);
       break;
     case 8:
-      writeGPIO_0(data);
+      writeGPIOdata(data);
       break;
     case 9:
-      writeGPIO_1(data);
+      writeGPIOdir(data);
       break;
     case 15:
       writeShutdown(data);
@@ -1493,7 +1518,7 @@ void tickHPT_1(void) {
 
 
 /*
- * read extended device 0:
+ * read extended device 6:
  *     HPT counter
  *     { data[31:0] }
  */
@@ -1503,7 +1528,7 @@ Word readHPTdata_1(void) {
 
 
 /*
- * write extended device 0:
+ * write extended device 6:
  *     HPT divisor
  *     { data[31:0] }
  */
@@ -1515,7 +1540,7 @@ void writeHPTdata_1(Word data) {
 
 
 /*
- * read extended device 1:
+ * read extended device 7:
  *     HPT status
  *     { 31'bx, expired }
  */
@@ -1532,7 +1557,7 @@ Word readHPTctrl_1(void) {
 
 
 /*
- * write extended device 1:
+ * write extended device 7:
  *     HPT ctrl
  *     { 31'bx, ien }
  */
@@ -1577,6 +1602,7 @@ static Word serialControl_1;
 void tickRS232_1(void) {
   static int rcvCount = 0;
   static int xmtCount = 0;
+  static int emptyCount = 0;
   int c;
 
   if (rcvCount++ == INST_PER_CHAR) {
@@ -1585,7 +1611,7 @@ void tickRS232_1(void) {
     if (c != EOF) {
       serialRcvData_1 = c & 0xFF;
       serialStatus_1 |= SERIAL_RCV_RDY;
-      if (serialControl_1 & SERIAL_RCV_IEN) {
+      if (serialControl_1 & SERIAL_RCV_RDY_IEN) {
         cpuSetInterrupt(IRQ_RS232_1_RCV);
       }
     }
@@ -1593,10 +1619,22 @@ void tickRS232_1(void) {
   if ((serialStatus_1 & SERIAL_XMT_RDY) == 0) {
     if (xmtCount++ == INST_PER_CHAR) {
       xmtCount = 0;
+      emptyCount = 0;
       fputc(serialXmtData_1 & 0xFF, serialOut_1);
       serialStatus_1 |= SERIAL_XMT_RDY;
-      if (serialControl_1 & SERIAL_XMT_IEN) {
+      if (serialControl_1 & SERIAL_XMT_RDY_IEN) {
         cpuSetInterrupt(IRQ_RS232_1_XMT);
+      }
+    }
+  } else {
+    if ((serialStatus_1 & SERIAL_XMT_EMPTY) == 0) {
+      // one character delay until transmitter empty
+      if (emptyCount++ == INST_PER_CHAR) {
+        emptyCount = 0;
+        serialStatus_1 |= SERIAL_XMT_EMPTY;
+        if (serialControl_1 & SERIAL_XMT_EMPTY_IEN) {
+          cpuSetInterrupt(IRQ_RS232_1_XMT);
+        }
       }
     }
   }
@@ -1604,13 +1642,13 @@ void tickRS232_1(void) {
 
 
 /*
- * read device 2:
+ * read extended device 8:
  *     receiver data
  *     { 24'bx, rcv_data[7:0] }
  */
 Word readRS232data_1(void) {
   serialStatus_1 &= ~SERIAL_RCV_RDY;
-  if (serialControl_1 & SERIAL_RCV_IEN) {
+  if (serialControl_1 & SERIAL_RCV_RDY_IEN) {
     cpuResetInterrupt(IRQ_RS232_1_RCV);
   }
   return serialRcvData_1;
@@ -1618,23 +1656,23 @@ Word readRS232data_1(void) {
 
 
 /*
- * write device 2:
+ * write extended device 8:
  *     transmitter data
  *     { 24'bx, xmt_data[7:0] }
  */
 void writeRS232data_1(Word data) {
   serialXmtData_1 = data & 0xFF;
-  serialStatus_1 &= ~SERIAL_XMT_RDY;
-  if (serialControl_1 & SERIAL_XMT_IEN) {
+  serialStatus_1 &= ~(SERIAL_XMT_RDY | SERIAL_XMT_EMPTY);
+  if (serialControl_1 & (SERIAL_XMT_RDY_IEN | SERIAL_XMT_EMPTY_IEN)) {
     cpuResetInterrupt(IRQ_RS232_1_XMT);
   }
 }
 
 
 /*
- * read device 3:
+ * read extended device 9:
  *     status
- *     { 30'bx, xmt_rdy, rcv_rdy }
+ *     { 29'bx, xmt_empty, xmt_rdy, rcv_rdy }
  */
 Word readRS232ctrl_1(void) {
   return serialStatus_1;
@@ -1642,9 +1680,10 @@ Word readRS232ctrl_1(void) {
 
 
 /*
- * write device 3:
+ * write extended device 9:
  *     control
- *     { set_baud, baud[2:0], 26'bx, xmt_ien, rcv_ien }
+ *     { set_baud, baud[2:0], 25'bx,
+ *       xmt_empty_ien, xmt_rdy_ien, rcv_rdy_ien }
  *     baud    baud rate
  *     000     2400
  *     001     4800
@@ -1657,24 +1696,31 @@ Word readRS232ctrl_1(void) {
  */
 void writeRS232ctrl_1(Word data) {
   /* handle interrupt control */
-  if (data & SERIAL_RCV_IEN) {
-    serialControl_1 |= SERIAL_RCV_IEN;
+  if (data & SERIAL_RCV_RDY_IEN) {
+    serialControl_1 |= SERIAL_RCV_RDY_IEN;
   } else {
-    serialControl_1 &= ~SERIAL_RCV_IEN;
+    serialControl_1 &= ~SERIAL_RCV_RDY_IEN;
   }
-  if ((serialControl_1 & SERIAL_RCV_IEN) &&
+  if ((serialControl_1 & SERIAL_RCV_RDY_IEN) &&
       (serialStatus_1 & SERIAL_RCV_RDY)) {
     cpuSetInterrupt(IRQ_RS232_1_RCV);
   } else {
     cpuResetInterrupt(IRQ_RS232_1_RCV);
   }
-  if (data & SERIAL_XMT_IEN) {
-    serialControl_1 |= SERIAL_XMT_IEN;
+  if (data & SERIAL_XMT_RDY_IEN) {
+    serialControl_1 |= SERIAL_XMT_RDY_IEN;
   } else {
-    serialControl_1 &= ~SERIAL_XMT_IEN;
+    serialControl_1 &= ~SERIAL_XMT_RDY_IEN;
   }
-  if ((serialControl_1 & SERIAL_XMT_IEN) &&
-      (serialStatus_1 & SERIAL_XMT_RDY)) {
+  if (data & SERIAL_XMT_EMPTY_IEN) {
+    serialControl_1 |= SERIAL_XMT_EMPTY_IEN;
+  } else {
+    serialControl_1 &= ~SERIAL_XMT_EMPTY_IEN;
+  }
+  if (((serialControl_1 & SERIAL_XMT_RDY_IEN) &&
+       (serialStatus_1 & SERIAL_XMT_RDY)) ||
+      ((serialControl_1 & SERIAL_XMT_EMPTY_IEN) &&
+       (serialStatus_1 & SERIAL_XMT_EMPTY))) {
     cpuSetInterrupt(IRQ_RS232_1_XMT);
   } else {
     cpuResetInterrupt(IRQ_RS232_1_XMT);
@@ -1712,7 +1758,7 @@ void initRS232_1(void) {
   serialOut_1 = fdopen(master, "w");
   setvbuf(serialOut_1, NULL, _IONBF, 0);
   while (fgetc(serialIn_1) != EOF) ;
-  serialStatus_1 = SERIAL_XMT_RDY;
+  serialStatus_1 = SERIAL_XMT_RDY | SERIAL_XMT_EMPTY;
   serialControl_1 = 0;
 }
 
