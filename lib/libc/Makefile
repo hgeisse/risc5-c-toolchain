@@ -4,20 +4,30 @@
 
 BUILD = ../../build
 
-DIRS = dummy string
-OBJS = $(wildcard $(patsubst %,%/*.o,$(DIRS)))
-LIB = libc.a
+LIBC_DIRS = dummy string math
+LIBM_DIRS = math
+DIRS = $(LIBC_DIRS) $(LIBM_DIRS)
+
+LIBC_OBJS = $(wildcard $(patsubst %,%/*.o,$(LIBC_DIRS)))
+LIBM_OBJS = $(wildcard $(patsubst %,%/*.o,$(LIBM_DIRS)))
+
+LIBC = libc.a
+LIBM = libm.a
 
 .PHONY:		all install objects clean
 
-all:		$(LIB)
+all:		$(LIBC) $(LIBM)
 
-install:	$(LIB)
+install:	$(LIBC) $(LIBM)
 		mkdir -p $(BUILD)/lib
-		cp $(LIB) $(BUILD)/lib
+		cp $(LIBC) $(BUILD)/lib
+		cp $(LIBM) $(BUILD)/lib
 
-$(LIB):		objects
-		$(BUILD)/bin/mklib -cv $(LIB) $(OBJS)
+$(LIBC):		objects
+		$(BUILD)/bin/mklib -cv $(LIBC) $(LIBC_OBJS)
+
+$(LIBM):		objects
+		$(BUILD)/bin/mklib -cv $(LIBM) $(LIBM_OBJS)
 
 objects:
 		for i in $(DIRS) ; do \
@@ -28,4 +38,5 @@ clean:
 		for i in $(DIRS) ; do \
 		  $(MAKE) -C $$i clean ; \
 		done
-		rm -f *~ $(LIB)
+		rm -f *~ $(LIBC)
+		rm -f *~ $(LIBM)

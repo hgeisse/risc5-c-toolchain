@@ -14,38 +14,58 @@
 extern void (*risc5_ivt[16])(void);  /* defined in crt0.s */
 
 /* IRQ numbers */
-#define RISC5_IRQ_HP_TIMER      (15U)
-#define RISC5_IRQ_MS_TIMER      (11U)
+#define RISC5_IRQ_HPTMR_0       (15U)
+#define RISC5_IRQ_HPTMR_1       (14U)
+#define RISC5_IRQ_MSTMR         (11U)
 #define RISC5_IRQ_RS232_0_RX    (7U)
 #define RISC5_IRQ_RS232_0_TX    (6U)
-#define RISC5_IRQ_BUTTONS       (3U)
+#define RISC5_IRQ_RS232_1_RX    (5U)
+#define RISC5_IRQ_RS232_1_TX    (4U)
+#define RISC5_IRQ_BTNSWT        (3U)
 
 /*********************************************************************************************************************/
 /*** Devices ***/
 
 /* Device base addresses */
+
 #define RISC5_IO_BASE		    (0xFFFFC0U)
 #define RISC5_XIO_BASE	        (0xFFFF80U)
 
 /* Standard device addresses */
-#define RISC5_IO_MS_TIMER	            ((volatile uint32_t*)((RISC5_IO_BASE) + (4*0)))
-#define RISC5_IO_SWITCH                 ((volatile uint32_t*)((RISC5_IO_BASE) + (4*1)))
-#define RISC5_IO_LED                    RISC5_IO_SWITCH /* SWITCH: read only, LED: write only */
-#define RISC5_IO_SERIAL_DATA            ((volatile uint32_t*)((RISC5_IO_BASE) + (4*2)))
-#define RISC5_IO_SERIAL_STAT_CTRL       ((volatile uint32_t*)((RISC5_IO_BASE) + (4*3)))
-#define RISC5_IO_SPI_DATA               ((volatile uint32_t*)((RISC5_IO_BASE) + (4*4)))
-#define RISC5_IO_SPI_STAT_CTRL          ((volatile uint32_t*)((RISC5_IO_BASE) + (4*5)))
-#define RISC5_IO_MOUSE_DATA_KBD_STAT    ((volatile uint32_t*)((RISC5_IO_BASE) + (4*6)))
-#define RISC5_IO_KBD_DATA               ((volatile uint32_t*)((RISC5_IO_BASE) + (4*7)))
-#define RISC5_IO_GPIO_DATA              ((volatile uint32_t*)((RISC5_IO_BASE) + (4*8)))
-#define RISC5_IO_GPIO_DIR               ((volatile uint32_t*)((RISC5_IO_BASE) + (4*9)))
-#define RISC5_IO_SIM_SHUTDOWN           ((volatile uint32_t*)0xFFFFFC)
+
+#define RISC5_IO_MSTMR	                ((volatile uint32_t*)(0xFFFFC0 + 0))    /* read: counter    write: control  */
+
+#define RISC5_IO_SWTLED                 ((volatile uint32_t*)(0xFFFFC4 + 0))    /* read: status     write: LEDs     */
+
+#define RISC5_IO_RS232_0_DATA           ((volatile uint32_t*)(0xFFFFC8 + 0))    /* read: rcv data   write: xmt data */
+#define RISC5_IO_RS232_0_STAT_CTRL      ((volatile uint32_t*)(0xFFFFC8 + 4))    /* read: status     write: control  */
+
+#define RISC5_IO_RS232_1_DATA           ((volatile uint32_t*)(0xFFFFA0 + 0))    /* read: rcv data   write: xmt data */
+#define RISC5_IO_RS232_1_STAT_CTRL      ((volatile uint32_t*)(0xFFFFA0 + 4))    /* read: status     write: control  */
+
+#define RISC5_IO_SPI_DATA               ((volatile uint32_t*)(0xFFFFD0 + 0))    /* read: data       write: data     */
+#define RISC5_IO_SPI_STAT_CTRL          ((volatile uint32_t*)(0xFFFFD0 + 4))    /* read: status     write: control  */
+
+#define RISC5_IO_KBD_MDATA_KSTAT        ((volatile uint32_t*)(0xFFFFD8 + 0))
+#define RISC5_IO_KBD_KDATA              ((volatile uint32_t*)(0xFFFFD8 + 4))
+
+#define RISC5_IO_GPIO_DATA              ((volatile uint32_t*)(0xFFFFE0 + 0))
+#define RISC5_IO_GPIO_DIR               ((volatile uint32_t*)(0xFFFFE0 + 4))
+
+#define RISC5_IO_SIM_SHUTDOWN           ((volatile uint32_t*)(0xFFFFFC + 0))
 
 /* Extended device addresses */
-#define RISC5_IO_HP_TIMER_DATA          ((volatile uint32_t*)((RISC5_XIO_BASE) + (4*0)))
-#define RISC5_IO_HP_TIMER_CTRL          ((volatile uint32_t*)((RISC5_XIO_BASE) + (4*1)))
-#define RISC5_IO_LCD_DATA               ((volatile uint32_t*)((RISC5_XIO_BASE) + (4*2)))
-#define RISC5_IO_LCD_STAT_CTRL          ((volatile uint32_t*)((RISC5_XIO_BASE) + (4*3)))
+
+#define RISC5_IO_HPTMR_0_DATA           ((volatile uint32_t*)(0xFFFF80 + 0))    /* read: counter    write: divisor */
+#define RISC5_IO_HPTMR_0_CTRL           ((volatile uint32_t*)(0xFFFF80 + 4))    /* read: status     write: control  */
+
+#define RISC5_IO_HPTMR_1_DATA           ((volatile uint32_t*)(0xFFFF98 + 0))    /* read: counter    write: divisor */
+#define RISC5_IO_HPTMR_1_CTRL           ((volatile uint32_t*)(0xFFFF98 + 4))    /* read: status     write: control  */
+
+#define RISC5_IO_LCD_DATA               ((volatile uint32_t*)(0xFFFF88 + 0))    /* read: data/status    write: data/instr    */
+#define RISC5_IO_LCD_STAT_CTRL          ((volatile uint32_t*)(0xFFFF88 + 4))    /* read: control lines  write: control lines */
+
+#define RISC5_IO_BTNSWT                 ((volatile uint32_t*)(0xFFFF88 + 0))    /* read: status     write: control  */
 
 /*********************************************************************************************************************/
 /*** Cpu Intrinsics ***/

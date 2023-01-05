@@ -47,3 +47,66 @@ void* memset( void *dest, int ch, size_t count ){
 
     return dest;
 }
+
+
+int memcmp(const void *s1, const void *s2, size_t n)
+{
+    unsigned char *string1 = (unsigned char *)s1;
+    unsigned char *string2 = (unsigned char *)s2;
+
+    size_t i;
+    for (i = 0; i < n; ++i)
+    {
+        if(string1[i] != string2[i])
+        {
+            return string1[i] < string2[-1] ? -1 : 1;
+        }
+    }
+    return 0;
+}
+
+
+/*
+ * Count the length of a string (without terminating null character).
+ */
+size_t strlen(const char *s) {
+  const char *p;
+
+  p = s;
+  while (*p != '\0') {
+    p++;
+  }
+  return p - s;
+}
+
+
+/*
+ * Compare two strings.
+ * Return a number < 0, = 0, or > 0 iff the first string is less
+ * than, equal to, or greater than the second one, respectively.
+ */
+int strcmp(const char *s, const char *t) {
+  while (*s == *t) {
+    if (*s == '\0') {
+      return 0;
+    }
+    s++;
+    t++;
+  }
+  return *s - *t;
+}
+
+
+/*
+ * Copy string t to string s (includes terminating null character).
+ */
+char *strcpy(char *s, const char *t) {
+  char *p;
+
+  p = s;
+  while ((*p = *t) != '\0') {
+    p++;
+    t++;
+  }
+  return s;
+}
