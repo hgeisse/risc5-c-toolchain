@@ -98,6 +98,24 @@ int strcmp(const char *s, const char *t) {
 
 
 /*
+ * Compare two strings, up to at most n bytes.
+ * Return a number < 0, = 0, or > 0 iff the first string is less
+ * than, equal to, or greater than the second one, respectively.
+ */
+int strncmp(const char *s, const char *t, size_t n) {
+  while (*s == *t && n > 0) {
+    if (*s == '\0') {
+      return 0;
+    }
+    s++;
+    t++;
+    n--;
+  }
+  return n == 0 ? 0 : *s - *t;
+}
+
+
+/*
  * Copy string t to string s (includes terminating null character).
  */
 char *strcpy(char *s, const char *t) {
@@ -107,6 +125,22 @@ char *strcpy(char *s, const char *t) {
   while ((*p = *t) != '\0') {
     p++;
     t++;
+  }
+  return s;
+}
+
+
+/*
+ * Copy string t to string s, up to at most n bytes.
+ */
+char *strncpy(char *s, const char *t, size_t n) {
+  char *p;
+
+  p = s;
+  while ((*p = *t) != '\0' && n > 0) {
+    p++;
+    t++;
+    n--;
   }
   return s;
 }
