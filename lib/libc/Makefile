@@ -4,7 +4,7 @@
 
 BUILD = ../../build
 
-LIBC_DIRS = dummy string math
+LIBC_DIRS = string math
 LIBM_DIRS = math
 DIRS = $(LIBC_DIRS) $(LIBM_DIRS)
 
