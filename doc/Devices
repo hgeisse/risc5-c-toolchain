@@ -201,3 +201,23 @@ format: { 31'bx, spi_rdy }
 (D)
 format: { 28'bx, net_en, fast, wifi_sel, sdc_sel }
 
+
+Shutdown Device (simulator only)
+================================
+
+IRQ:  --
+base: 0xFFFFFC
+
+addr    read            write
+-----------------------------------
++0      data (A)        data (B)
+
+(A)
+format: { 32'bx }
+reading from the shutdown device results in a fatal error
+
+(B)
+format: { 24'bx, data[7:0] }
+writing to the shutdown device results in terminating the simulator
+(with the lowest 8 bits of the data as the simulator's exit status)
+
