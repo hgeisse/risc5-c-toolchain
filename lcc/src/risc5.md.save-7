@@ -850,13 +850,13 @@ static void emit2(Node p) {
     case ARG+B:
       dalign = 4;
       salign = p->syms[1]->u.c.v.i;
-      blkcopy(14, p->syms[2]->u.c.v.i,
+      blkcopy(29, p->syms[2]->u.c.v.i,
               getregnum(p->x.kids[0]), 0,
               p->syms[0]->u.c.v.i, tmpregs);
       n = p->syms[2]->u.c.v.i + p->syms[0]->u.c.v.i;
       dst = p->syms[2]->u.c.v.i;
       for (; dst <= 12 && dst < n; dst += 4) {
-        print("\tLDW\tR%d,R14,%d\n", (dst / 4) + 4, dst);
+        print("\tldw66\t$%d,$29,%d\n", (dst / 4) + 4, dst);
       }
       break;
   }
