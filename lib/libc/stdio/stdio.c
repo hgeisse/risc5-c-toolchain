@@ -24,9 +24,10 @@
 
 
 typedef struct {
-  char *p;		/* buffer pointer - if NULL use function below */
-  size_t n;		/* number of bytes free in buffer */
-  void (*f)(int);	/* character output function */
+  void (*fnc)(int);	/* char output function - if NULL, use buffer */
+  size_t len;		/* buffer size in bytes (may be zero) */
+  size_t cnt;		/* number of bytes already written */
+  char *ptr;		/* current buffer pointer */
 } FILE;
 
 
@@ -37,23 +38,22 @@ extern void putchar(int c);
 
 
 static void putc(int c, FILE *stream) {
-  if (stream->p != NULL) {
-    /* use pointer to write character to buffer */
-    if (stream->n > 0) {
-      stream->n--;
-      *(stream->p)++ = c;
-    }
+  if (stream->fnc != 0) {
+    /* use character output function */
+    (*stream->fnc)(c);
   } else {
-    /* use more general character output function */
-    (*stream->f)(c);
+    /* use pointer to write character to buffer */
+    if (stream->cnt < stream->len) {
+      /* but only if there is enough space */
+      *(stream->ptr)++ = c;
+    }
   }
+  /* update cnt, even if nothing has actually been written */
+  stream->cnt++;
 }
 
 
 /**************************************************************/
-
-
-#define CHECK_PUTC(s)	if (s->p != NULL && s->n == 0) return -1
 
 
 static int printString(char *str, int flags,
@@ -75,19 +75,16 @@ static int printString(char *str, int flags,
   /* pad to the left if necessary */
   if (!(flags & FLAG_LEFT)) {
     for (i = 0; i < width - length; i++) {
-      CHECK_PUTC(stream);
       putc(' ', stream);
     }
   }
   /* print the string proper */
   for (i = 0; i < length; i++) {
-    CHECK_PUTC(stream);
     putc(str[i], stream);
   }
   /* pad to the right if necessary */
   if (flags & FLAG_LEFT) {
     for (i = 0; i < width - length; i++) {
-      CHECK_PUTC(stream);
       putc(' ', stream);
     }
   }
@@ -116,7 +113,6 @@ static int printSigned(signed long snum, int flags,
   /* if snum and prec are both zero, print nothing but padding spaces */
   if (isZero && (flags & FLAG_PREC) && prec == 0) {
     for (i = 0; i < width; i++) {
-      CHECK_PUTC(stream);
       putc(' ', stream);
     }
     return width;
@@ -148,38 +144,31 @@ static int printSigned(signed long snum, int flags,
     } else {
       /* pad with spaces, now */
       for (i = 0; i < width - length; i++) {
-        CHECK_PUTC(stream);
         putc(' ', stream);
       }
     }
   }
   /* print the sign if necessary */
   if (isNegative) {
-    CHECK_PUTC(stream);
     putc('-', stream);
   } else
   if (flags & FLAG_PLUS) {
-    CHECK_PUTC(stream);
     putc('+', stream);
   } else
   if (flags & FLAG_SPACE) {
-    CHECK_PUTC(stream);
     putc(' ', stream);
   }
   /* print the leading zeroes */
   for (i = 0; i < numZeroes; i++) {
-    CHECK_PUTC(stream);
     putc('0', stream);
   }
   /* print the digits proper */
   while (numDigits--) {
-    CHECK_PUTC(stream);
     putc('0' + digits[numDigits], stream);
   }
   /* pad to the right if necessary */
   if (flags & FLAG_LEFT) {
     for (i = 0; i < width - length; i++) {
-      CHECK_PUTC(stream);
       putc(' ', stream);
     }
   }
@@ -207,7 +196,6 @@ static int printUnsigned(unsigned long unum, int base, int flags,
   /* if unum and prec are both zero, print nothing but padding spaces */
   if (isZero && (flags & FLAG_PREC) && prec == 0) {
     for (i = 0; i < width; i++) {
-      CHECK_PUTC(stream);
       putc(' ', stream);
     }
     return width;
@@ -247,37 +235,30 @@ static int printUnsigned(unsigned long unum, int base, int flags,
     } else {
       /* pad with spaces, now */
       for (i = 0; i < width - length; i++) {
-        CHECK_PUTC(stream);
         putc(' ', stream);
       }
     }
   }
   /* print 0x or 0X if necessary */
   if ((flags & FLAG_ALT) && !isZero && base == 16) {
-    CHECK_PUTC(stream);
     putc('0', stream);
     if (flags & FLAG_CAPS) {
-      CHECK_PUTC(stream);
       putc('X', stream);
     } else {
-      CHECK_PUTC(stream);
       putc('x', stream);
     }
   }
   /* print the leading zeroes */
   for (i = 0; i < numZeroes; i++) {
-    CHECK_PUTC(stream);
     putc('0', stream);
   }
   /* print the digits proper */
   while (numDigits--) {
-    CHECK_PUTC(stream);
     putc(dp[digits[numDigits]], stream);
   }
   /* pad to the right if necessary */
   if (flags & FLAG_LEFT) {
     for (i = 0; i < width - length; i++) {
-      CHECK_PUTC(stream);
       putc(' ', stream);
     }
   }
@@ -287,7 +268,7 @@ static int printUnsigned(unsigned long unum, int base, int flags,
 
 
 static int doPrintf(FILE *stream, const char *format, va_list ap) {
-  int count, auxCount;
+  int count;
   char c;
   int flags;
   int width;
@@ -304,7 +285,6 @@ static int doPrintf(FILE *stream, const char *format, va_list ap) {
     /* conversion specifier? */
     if (c != '%') {
       /* no, output character verbatim */
-      CHECK_PUTC(stream);
       putc(c, stream);
       count++;
       continue;
@@ -393,23 +373,17 @@ static int doPrintf(FILE *stream, const char *format, va_list ap) {
     /* finally, the conversion character */
     switch (c) {
       case '%':
-        CHECK_PUTC(stream);
         putc(c, stream);
         count++;
         break;
       case 'c':
         c = va_arg(ap, char);
-        CHECK_PUTC(stream);
         putc(c, stream);
         count++;
         break;
       case 's':
         str = va_arg(ap, char *);
-        auxCount = printString(str, flags, width, prec, stream);
-        if (auxCount < 0) {
-          return -1;
-        }
-        count += auxCount;
+        count += printString(str, flags, width, prec, stream);
         break;
       case 'd':
       case 'i':
@@ -424,11 +398,7 @@ static int doPrintf(FILE *stream, const char *format, va_list ap) {
             snum = va_arg(ap, long);
             break;
         }
-        auxCount = printSigned(snum, flags, width, prec, stream);
-        if (auxCount < 0) {
-          return -1;
-        }
-        count += auxCount;
+        count += printSigned(snum, flags, width, prec, stream);
         break;
       case 'u':
       case 'o':
@@ -460,29 +430,17 @@ static int doPrintf(FILE *stream, const char *format, va_list ap) {
             unum = va_arg(ap, unsigned long);
             break;
         }
-        auxCount = printUnsigned(unum, base, flags, width, prec, stream);
-        if (auxCount < 0) {
-          return -1;
-        }
-        count += auxCount;
+        count += printUnsigned(unum, base, flags, width, prec, stream);
         break;
       case 'p':
         flags |= FLAG_ALT | FLAG_ZERO;
         unum = (unsigned long) va_arg(ap, void *);
-        auxCount = printUnsigned(unum, 16, flags, 10, 0, stream);
-        if (auxCount < 0) {
-          return -1;
-        }
-        count += auxCount;
+        count += printUnsigned(unum, 16, flags, 10, 0, stream);
         break;
 #if 0
       case 'f':
         fnum = va_arg(ap, double);
-        auxCount = printFloat(fnum, flags, width, prec, stream);
-        if (auxCount < 0) {
-          return -1;
-        }
-        count += auxCount;
+        count += printFloat(fnum, flags, width, prec, stream);
         break;
 #endif
       default:
@@ -502,9 +460,10 @@ int printf(const char *format, ...) {
   va_list ap;
   int count;
 
-  stream.p = NULL;
-  stream.n = 0;
-  stream.f = putchar;
+  stream.fnc = putchar;
+  stream.len = 0;
+  stream.cnt = 0;
+  stream.ptr = NULL;
   va_start(ap, format);
   count = doPrintf(&stream, format, ap);
   va_end(ap);
@@ -517,13 +476,14 @@ int sprintf(char *str, const char *format, ...) {
   va_list ap;
   int count;
 
-  stream.p = str;
-  stream.n = SIZE_MAX;
-  stream.f = 0;
+  stream.fnc = 0;
+  stream.len = SIZE_MAX;
+  stream.cnt = 0;
+  stream.ptr = str;
   va_start(ap, format);
   count = doPrintf(&stream, format, ap);
   va_end(ap);
-  putc('\0', &stream);
+  *stream.ptr = '\0';
   return count;
 }
 
@@ -533,20 +493,22 @@ int snprintf(char *str, size_t size, const char *format, ...) {
   va_list ap;
   int count;
 
-  stream.p = str;
-  stream.n = size;
-  stream.f = 0;
+  stream.fnc = 0;
+  stream.len = size;
+  stream.cnt = 0;
+  stream.ptr = str;
   va_start(ap, format);
   count = doPrintf(&stream, format, ap);
   va_end(ap);
-  if (count < 0 || stream.n == 0) {
-    /* insufficient string space, but must write delimiter */
-    stream.p--;
-    stream.n++;
-    /* nevertheless, return string space overflow indicator */
-    count = -1;
+  /* write string delimiter */
+  if (stream.len > 0) {
+    /* but only if there is actually a buffer */
+    if (stream.cnt >= stream.len) {
+      /* insufficient string space, correct pointer */
+      stream.ptr--;
+    }
+    *stream.ptr = '\0';
   }
-  putc('\0', &stream);
   return count;
 }
 
@@ -555,9 +517,10 @@ int vprintf(const char *format, va_list ap) {
   FILE stream;
   int count;
 
-  stream.p = NULL;
-  stream.n = 0;
-  stream.f = putchar;
+  stream.fnc = putchar;
+  stream.len = 0;
+  stream.cnt = 0;
+  stream.ptr = NULL;
   count = doPrintf(&stream, format, ap);
   return count;
 }
@@ -567,11 +530,12 @@ int vsprintf(char *str, const char *format, va_list ap) {
   FILE stream;
   int count;
 
-  stream.p = str;
-  stream.n = SIZE_MAX;
-  stream.f = 0;
+  stream.fnc = 0;
+  stream.len = SIZE_MAX;
+  stream.cnt = 0;
+  stream.ptr = str;
   count = doPrintf(&stream, format, ap);
-  putc('\0', &stream);
+  *stream.ptr = '\0';
   return count;
 }
 
@@ -580,17 +544,19 @@ int vsnprintf(char *str, size_t size, const char *format, va_list ap) {
   FILE stream;
   int count;
 
-  stream.p = str;
-  stream.n = size;
-  stream.f = 0;
+  stream.fnc = 0;
+  stream.len = size;
+  stream.cnt = 0;
+  stream.ptr = str;
   count = doPrintf(&stream, format, ap);
-  if (count < 0 || stream.n == 0) {
-    /* insufficient string space, but must write delimiter */
-    stream.p--;
-    stream.n++;
-    /* nevertheless, return string space overflow indicator */
-    count = -1;
+  /* write string delimiter */
+  if (stream.len > 0) {
+    /* but only if there is actually a buffer */
+    if (stream.cnt >= stream.len) {
+      /* insufficient string space, correct pointer */
+      stream.ptr--;
+    }
+    *stream.ptr = '\0';
   }
-  putc('\0', &stream);
   return count;
 }
