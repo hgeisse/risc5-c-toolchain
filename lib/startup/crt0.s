@@ -3,7 +3,7 @@
 //
 
 	// constants
-	.SET	stack,0x400000
+	.SET	stack,0xC00000
 	.SET	interrupt_frame_size,17*4
 
 	// import symbols
