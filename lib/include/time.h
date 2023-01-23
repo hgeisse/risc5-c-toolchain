@@ -10,4 +10,6 @@
  *       of time.h, just the bare minimum
  *********************************************/
 
+typedef unsigned long time_t;
+
 #endif //__TIME_H
