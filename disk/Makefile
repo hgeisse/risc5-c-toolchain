@@ -4,7 +4,7 @@
 
 BUILD = ../build
 
-DIRS =
+DIRS = mkdisk
 
 all:
 		for i in $(DIRS) ; do \
