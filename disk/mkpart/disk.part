@@ -1,0 +1,51 @@
+#
+# disk.part -- disk partitioning control file
+#
+
+# The first line of this file (apart from empty or comment
+# lines) must be the file name of the master boot block, or
+# the string -noboot- if nothing but the partition table
+# (and the disk identifier - aka disk signature - as well
+# as the boot signature) should be written to the disk.
+
+-noboot-
+#./mbootblk
+
+# The rest of this file consists of partition table entries,
+# one per line, and at most 4 of them. Each entry is in the
+# following form:
+#
+# type boot start size
+#
+# type:
+#   possible values 0x00..0xFF
+#   indicates partition type
+#   examples are:
+#   0x00 = partition table entry not used
+#   0x0C = FAT32 with LBA
+#   0x82 = Linux swap space
+#   0x83 = Linux file system
+#   0xA5 = FreeBSD
+#   0xA6 = OpenBSD
+#   0xA9 = NetBSD
+# boot:
+#   '*' means that the partition can be booted
+#   '-' means that the partition cannot be booted
+#   more than one partition may be bootable
+# start:
+#   sector number where partition starts (or MiB,
+#   if the number is followed directly by an 'M')
+#   no partition may start below sector 64
+#   '+' means default (i.e., next 1 MiB boundary)
+# size:
+#   size of partition in sectors (or in MiB, if
+#   the number is followed directly by an 'M')
+#   partitions must not overlap
+#   Note: 1 MiB = 2048 sectors
+#         1 GiB = 2097152 sectors
+#
+# The following example exactly fits on a 100 MiB disk:
+
+0x0C	-	+	10M
+0xA9	*	+	30M
+0x0C	*	+	59M
