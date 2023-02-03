@@ -5,8 +5,8 @@
 # The first line of this file (apart from empty or comment
 # lines) must be the file name of the master boot block, or
 # the string -noboot- if nothing but the partition table
-# (and the disk identifier - aka disk signature - as well
-# as the boot signature) should be written to the disk.
+# (and the disk identifier, aka disk signature) should be
+# written to the disk.
 
 -noboot-
 #./mbootblk

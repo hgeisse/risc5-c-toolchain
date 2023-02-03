@@ -298,8 +298,8 @@ int main(int argc, char *argv[]) {
            partTbl[currPart].start,
            partTbl[currPart].size);
   }
-  /* finally, write partition table to master boot record */
-  /* this also sets the disk identifier and the boot signature */
+  /* finally, write the partition table to the master boot record */
+  /* also set the disk identifier (but *NOT* the boot signature!) */
   disk = fopen(diskName, "r+b");
   if (disk == NULL) {
     error("cannot open disk image '%s'", diskName);
@@ -311,8 +311,6 @@ int main(int argc, char *argv[]) {
   buf[0x1BC] = 0;  /* no copy protection */
   buf[0x1BD] = 0;
   memcpy(&buf[0x1BE], partTbl, sizeof(partTbl));  /* partition table */
-  buf[0x1FE] = 0x55;  /* boot signature */
-  buf[0x1FF] = 0xAA;
   fseek(disk, 0, SEEK_SET);
   if (fwrite(buf, 1, SECTOR_SIZE, disk) != SECTOR_SIZE) {
     error("cannot write master boot record to disk image '%s'", diskName);
