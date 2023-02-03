@@ -18,10 +18,8 @@ all:		$(BIN)
 install:	$(BIN)
 		mkdir -p $(BUILD)/bin
 		cp $(BIN) $(BUILD)/bin
-		mkdir -p $(BUILD)/run-sim
-		cp disk.part $(BUILD)/run-sim
-		mkdir -p $(BUILD)/run-fpga
-		cp disk.part $(BUILD)/run-fpga
+		mkdir -p $(BUILD)/disk
+		cp disk.part $(BUILD)/disk
 
 $(BIN):		$(OBJS)
 		$(CC) $(LDFLAGS) -o $(BIN) $(OBJS) $(LDLIBS)
