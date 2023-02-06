@@ -1,0 +1,6 @@
+The program 'wrtvbr' builds a sample volume boot record (VBR) and
+writes it as the first sector to a partition on a disk image. The
+VBR is usually meant to load an operating system from its partition
+(possibly with the help of a special loader program), but the VBR
+contained in 'wrtvbr' cannot do that. It prints a message instead,
+and returns.

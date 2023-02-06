@@ -4,7 +4,7 @@
 
 BUILD = ../build
 
-DIRS = mkdisk mkmboot mkpart
+DIRS = mkdisk mkmboot mkpart wrtvbr
 
 all:
 		for i in $(DIRS) ; do \
