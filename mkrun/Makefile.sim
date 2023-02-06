@@ -9,8 +9,7 @@ PROM = $(BUILD)/prom/boot.mem
 
 DSK_IMG = disk.img
 DSK_SIZ = 100M
-DSK_MBR = $(BUILD)/disk/mbr.bin
-DSK_LDR = $(BUILD)/disk/ldr.bin
+DSK_PART = $(BUILD)/disk/disk.part
 
 BOOT =
 
@@ -46,20 +45,8 @@ boot-disk:	$(DSK_IMG)
 
 $(DSK_IMG):
 		$(BUILD)/bin/mkdisk $(DSK_IMG) $(DSK_SIZ)
-		dd if=$(DSK_MBR) of=$(DSK_IMG) bs=512 seek=0 conv=notrunc
-		dd if=$(DSK_LDR) of=$(DSK_IMG) bs=512 seek=2 conv=notrunc
-		$(BUILD)/bin/mksfs $(DSK_IMG)
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/blinkintr.bin
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/blinkintr2.bin
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/blinkpoll.bin
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/echo.bin
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/hello.bin
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/hello2.bin
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/lcdtest.bin
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/memtest.bin
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/promtest.bin
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/rs232intr.bin
-		$(BUILD)/bin/cpsfs $(DSK_IMG) ../stdalone/sregtest.bin
+		$(BUILD)/bin/mkpart $(DSK_IMG) $(DSK_PART)
+		$(BUILD)/bin/wrtvbr $(DSK_IMG) 0
 
 sercomm:
 		$(BUILD)/bin/sercomm $(BOOT)
