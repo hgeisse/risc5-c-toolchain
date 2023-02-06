@@ -8,7 +8,8 @@
 # (and the disk identifier, aka disk signature) should be
 # written to the disk.
 
-../disk/mbootblk
+-noboot-
+#../disk/mbootblk
 
 # The rest of this file consists of partition table entries,
 # one per line, and at most 4 of them. Each entry is in the
@@ -45,4 +46,6 @@
 #
 # The following example exactly fits on a 100 MiB disk:
 
-0x0C	*	1M	99M
+0x0C	-	+	10M
+0xA9	*	+	30M
+0x0C	*	+	59M
