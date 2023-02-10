@@ -16,6 +16,7 @@
 #define PROM_SERIAL_WRITE	((void (*) (Byte)) 0xFFE01C)
 #define PROM_SDCARD_READ	((void (*) (Word, Word *)) 0xFFE020)
 #define PROM_SDCARD_WRITE	((void (*) (Word, Word *)) 0xFFE024)
+#define PROM_SDCARD_CAPACITY	((Word (*) (void)) 0xFFE028)
 
 
 void delay(Word msec) {
@@ -60,4 +61,9 @@ void sdcardRead(Word sector, Word *buffer) {
 
 void sdcardWrite(Word sector, Word *buffer) {
   PROM_SDCARD_WRITE(sector, buffer);
+}
+
+
+Word sdcardCapacity(void) {
+  return PROM_SDCARD_CAPACITY();
 }

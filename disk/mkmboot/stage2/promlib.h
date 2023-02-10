@@ -16,6 +16,7 @@ Bool serialWriteRdy(void);
 void serialWrite(Byte c);
 void sdcardRead(Word sector, Word *buffer);
 void sdcardWrite(Word sector, Word *buffer);
+Word sdcardCapacity(void);
 
 
 #endif /* _PROMLIB_H_ */
