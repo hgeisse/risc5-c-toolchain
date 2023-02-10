@@ -98,6 +98,17 @@ void sdcardTest(void) {
   printf("0x%08X  0x%08X  0x%08X  0x%08X ... 0x%08X  0x%08X\n",
          buffer[0], buffer[1], buffer[2], buffer[3],
          buffer[126], buffer[127]);
+  /* finally, show capacity */
+  printf("capacity = ");
+  p = (Byte *) sdcardCapacity();
+  for (i = 0; i < 8; i++) {
+    printf("0x%02X  ", p[i]);
+  }
+  printf("\n           ");
+  for (i = 8; i < 16; i++) {
+    printf("0x%02X  ", p[i]);
+  }
+  printf("\n");
   printf("\n");
 }
 
