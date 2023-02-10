@@ -416,7 +416,9 @@ void initRS232_0(void) {
 #define DISK_WRT1	3
 
 
-static Bool debugDisk = false;
+static Bool debugDiskSectorOp = false;
+static Bool debugDiskCommand = false;
+static Bool debugDiskRdWrWord = false;
 
 static FILE *diskImage;
 static int diskState;
@@ -427,9 +429,14 @@ static Word diskTxBuf[128 + 2];
 static int diskTxCnt;
 static int diskTxIdx;
 
+static Byte csd[16] = {
+  0x40, 0x0E, 0x00, 0x32, 0x5B, 0x59, 0x00, 0x00,
+  0x00, 0x00, 0x7F, 0x80, 0x0A, 0x40, 0x40, 0xC3,
+};
+
 
 static void diskSeekSector(Word secnum) {
-  if (debugDisk) {
+  if (debugDiskSectorOp) {
     printf("DISK: seek to sector 0x%08X\n", secnum);
   }
   if (diskImage == NULL) {
@@ -443,7 +450,7 @@ static void diskReadSector(Word *buf) {
   Byte bytes[512];
   int i;
 
-  if (debugDisk) {
+  if (debugDiskSectorOp) {
     printf("DISK: read sector\n");
   }
   if (diskImage == NULL) {
@@ -465,7 +472,7 @@ static void diskWriteSector(Word *buf) {
   Byte bytes[512];
   int i;
 
-  if (debugDisk) {
+  if (debugDiskSectorOp) {
     printf("DISK: write sector\n");
   }
   if (diskImage == NULL) {
@@ -486,14 +493,29 @@ static void diskWriteSector(Word *buf) {
 static void diskRunCmd(void) {
   Word cmd;
   Word arg;
+  int i;
 
   cmd = diskRxBuf[0];
   arg = diskRxBuf[1] << 24 |
         diskRxBuf[2] << 16 |
         diskRxBuf[3] <<  8 |
         diskRxBuf[4] <<  0;
+  if (debugDiskCommand) {
+    printf("DISK: cmd = 0x%02X, arg = 0x%08X\n", cmd, arg);
+  }
   switch (cmd) {
-    case 81:
+    case 64+9:
+      /* CMD9: send CSD */
+      diskState = DISK_READ;
+      diskTxBuf[0] = 0;
+      diskTxBuf[1] = 254;
+      for (i = 0; i < 16; i++) {
+        diskTxBuf[2 + i] = csd[i];
+      }
+      diskTxCnt = 2 + 16;
+      break;
+    case 64+17:
+      /* CMD17: read single block */
       diskState = DISK_READ;
       diskTxBuf[0] = 0;
       diskTxBuf[1] = 254;
@@ -501,13 +523,15 @@ static void diskRunCmd(void) {
       diskReadSector(diskTxBuf + 2);
       diskTxCnt = 2 + 128;
       break;
-    case 88:
+    case 64+24:
+      /* CMD24: write single block */
       diskState = DISK_WRT0;
       diskSeekSector(arg - diskOffset);
       diskTxBuf[0] = 0;
       diskTxCnt = 1;
       break;
     default:
+      /* all other commands */
       diskTxBuf[0] = 0;
       diskTxCnt = 1;
       break;
@@ -524,7 +548,7 @@ static Word diskRead(void) {
   } else {
     result = 255;
   }
-  if (debugDisk) {
+  if (debugDiskRdWrWord) {
     printf("DISK: read, result = 0x%08X\n", result);
   }
   return result;
@@ -532,7 +556,7 @@ static Word diskRead(void) {
 
 
 static void diskWrite(Word value) {
-  if (debugDisk) {
+  if (debugDiskRdWrWord) {
     printf("DISK: write, value = 0x%08X, state = %d\n",
            value, diskState);
   }
@@ -581,6 +605,10 @@ static void diskWrite(Word value) {
 
 
 void diskInit(char *diskName) {
+  long numBytes;
+  Word numSectors;
+  Word csize;
+
   if (diskName == NULL) {
     diskImage = NULL;
     return;
@@ -589,6 +617,21 @@ void diskInit(char *diskName) {
   if (diskImage == NULL) {
     error("cannot open disk file '%s'", diskName);
   }
+  /* determine disk capacity and set CSD */
+  fseek(diskImage, 0, SEEK_END);
+  numBytes = ftell(diskImage);
+  fseek(diskImage, 0, SEEK_SET);
+  if (numBytes % (1024 * 512) != 0) {
+    printf("Warning: disk image '%s' is not "
+           "a multiple of 1024 sectors.\n",
+           diskName);
+  }
+  numSectors = numBytes / 512;
+  csize = numSectors / 1024 - 1;
+  csd[7] = (csize >> 16) & 0x3F;
+  csd[8] = (csize >>  8) & 0xFF;
+  csd[9] = (csize >>  0) & 0xFF;
+  /* init SD card controller */
   diskState = DISK_CMD;
   diskSeekSector(0);
   diskReadSector(diskTxBuf);
