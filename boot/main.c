@@ -293,7 +293,7 @@ void sdWrite(int dst, int src) {
 Word sdCapacity(void) {
   Word data;
   int i;
-  /* !!!!! */ static Byte csd[16];
+  Byte csd[16];
   Word csize;
   Word numSectors;
 
@@ -327,8 +327,7 @@ Word sdCapacity(void) {
           (((Word) csd[9] & 0xFF) <<  0);
   /* compute number of sectors */
   numSectors = (csize + 1) << 10;
-  //return numSectors;
-  return (Word) csd;
+  return numSectors;
 }
 
 
