@@ -23,6 +23,7 @@
 	.GLOBAL	sndByte
 	.GLOBAL	sdRead
 	.GLOBAL	sdWrite
+	.GLOBAL	sdCapacity
 
 //--------------------------------------------------------------
 
@@ -36,6 +37,7 @@
 	.GLOBAL	serialWrite
 	.GLOBAL	sdcardRead
 	.GLOBAL	sdcardWrite
+	.GLOBAL	sdcardCapacity
 
 	.CODE
 
@@ -68,6 +70,9 @@ sdcardRead:
 
 sdcardWrite:
 	B	sdWrite
+
+sdcardCapacity:
+	B	sdCapacity
 
 //--------------------------------------------------------------
 

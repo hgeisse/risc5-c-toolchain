@@ -290,6 +290,48 @@ void sdWrite(int dst, int src) {
 }
 
 
+Word sdCapacity(void) {
+  Word data;
+  int i;
+  /* !!!!! */ static Byte csd[16];
+  Word csize;
+  Word numSectors;
+
+  /* CMD9: send card-specific data (CSD) */
+  spiCmd(9, 0);
+  /* wait for start data marker */
+  do {
+    spi(-1);
+    data = *SPI_DATA;
+  } while (data != 254);
+  /* get data */
+  for (i = 0; i < 16; i++) {
+    *SPI_DATA = 0xFFFFFFFF;
+    while ((*SPI_CTRL & 1) == 0) ;
+    data = *SPI_DATA;
+    csd[i] = data;
+  }
+  /* may be a checksum */
+  spi(255);
+  spi(255);
+  /* deselect card */
+  spiIdle(1);
+  /* verify correct CSD version */
+  if ((csd[0] & 0xC0) != 0x40) {
+    /* wrong CSD structure version */
+    return 0;
+  }
+  /* extract size information */
+  csize = (((Word) csd[7] & 0x3F) << 16) |
+          (((Word) csd[8] & 0xFF) <<  8) |
+          (((Word) csd[9] & 0xFF) <<  0);
+  /* compute number of sectors */
+  numSectors = (csize + 1) << 10;
+  //return numSectors;
+  return (Word) csd;
+}
+
+
 /**************************************************************/
 
 
