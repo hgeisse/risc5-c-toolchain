@@ -52,6 +52,7 @@ void sdcardTest(void) {
   Word save[512/4];
   Byte *p;
   int i;
+  Word numSectors;
 
   /* read sector 0 */
   printf("read sector 0\n");
@@ -99,16 +100,10 @@ void sdcardTest(void) {
          buffer[0], buffer[1], buffer[2], buffer[3],
          buffer[126], buffer[127]);
   /* finally, show capacity */
-  printf("capacity = ");
-  p = (Byte *) sdcardCapacity();
-  for (i = 0; i < 8; i++) {
-    printf("0x%02X  ", p[i]);
-  }
-  printf("\n           ");
-  for (i = 8; i < 16; i++) {
-    printf("0x%02X  ", p[i]);
-  }
+  numSectors = sdcardCapacity();
   printf("\n");
+  printf("capacity = %u (0x%08X) sectors, 512 bytes each\n",
+         numSectors, numSectors);
   printf("\n");
 }
 
