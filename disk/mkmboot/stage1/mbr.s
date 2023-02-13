@@ -51,8 +51,8 @@ liftoff:
 msg:
 	.BYTE	0x0D, 0x0A
 	.BYTE	"MBR executing..."
-	.BYTE	0x0D, 0x0A
+	.BYTE	0x0D, 0x0A, 0
 
-	.SPACE	370			// adjust for sizeof(mbr) = 512
+	.SPACE	369			// adjust for sizeof(mbr) = 512
 
 	.BYTE	0x55,0xAA		// boot record signature
