@@ -31,6 +31,10 @@ typedef struct {
 PartEntry partTbl[4];
 
 
+unsigned int partStart;
+unsigned int partSize;
+
+
 /**************************************************************/
 
 
@@ -81,6 +85,8 @@ int main(void) {
       continue;
     }
     /* we have a valid VBR: success */
+    partStart = partTbl[n].start;
+    partSize = partTbl[n].size;
     return 0;
   }
   /* if we ever get here, the bootstrap failed */

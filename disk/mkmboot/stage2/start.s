@@ -11,6 +11,8 @@
 	.GLOBAL	_bbss
 	.GLOBAL	_ebss
 	.GLOBAL	main
+	.GLOBAL	partStart
+	.GLOBAL	partSize
 
 	.CODE
 
@@ -45,4 +47,8 @@ clrtest:
 	ADD	R14,R14,(1+0)*4		// release stack frame
 	SUB	R0,R0,0			// test main's return value
 	BNE	R15			// not zero means error
-	B	VBR_LD_ADDR		// else jump to VBR
+	MOV	R1,partStart		// else load partition info
+	LDW	R1,R1,0
+	MOV	R2,partSize
+	LDW	R2,R2,0
+	B	VBR_LD_ADDR		// and jump to VBR
