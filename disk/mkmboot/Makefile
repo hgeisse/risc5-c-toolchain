@@ -10,8 +10,8 @@ install:	mbootblk
 		mkdir -p $(BUILD)/disk
 		cp mbootblk $(BUILD)/disk
 
-mbootblk:	stage1/mbr.bin stage2/mboot.bin
-		cat stage1/mbr.bin stage2/mboot.bin >mbootblk
+mbootblk:	stage1/mbr.bin stage2/mboot.bin combine
+		./combine stage1/mbr.bin stage2/mboot.bin mbootblk
 
 stage1/mbr.bin:
 		$(MAKE) -C stage1
@@ -19,7 +19,10 @@ stage1/mbr.bin:
 stage2/mboot.bin:
 		$(MAKE) -C stage2
 
+combine:	combine.c
+		gcc -g -Wall -o combine combine.c
+
 clean:
 		$(MAKE) -C stage1 clean
 		$(MAKE) -C stage2 clean
-		rm -f *~ mbootblk
+		rm -f *~ combine mbootblk
