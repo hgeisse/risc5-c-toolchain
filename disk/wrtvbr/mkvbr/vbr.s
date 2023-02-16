@@ -46,4 +46,4 @@ msg:
 
 	.SPACE	276			// adjust for sizeof(vbr) = 512
 
-	.BYTE	0x55,0xAA		// boot record signature
+	.BYTE	0x55, 0xAA		// boot record signature
