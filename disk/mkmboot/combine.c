@@ -9,7 +9,7 @@
 #include <stdarg.h>
 
 
-#define SECTOR_SIZE	512
+#define SECTOR_SIZE	512	/* bytes per sector */
 #define MIN_RSV_SECTS	64	/* min # sectors before first partition */
 
 

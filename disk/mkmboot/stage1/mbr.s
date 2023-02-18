@@ -2,7 +2,7 @@
 // mbr.s -- master boot record
 //
 
-	.SET	startSector,1		// disk location of boot manager
+	.SET	bootmgrStart,1		// disk location of boot manager
 	.SET	loadAddr,0xB00000	// where to load the boot manager
 
 	.SET	serialOut,0xFFE01C	// serial output
@@ -10,7 +10,7 @@
 
 	// get some addresses listed in the load map
 	.GLOBAL	mbr
-	.GLOBAL	numSectors
+	.GLOBAL	bootmgrSize
 	.GLOBAL	mbr1
 	.GLOBAL	load
 	.GLOBAL	liftoff
@@ -19,7 +19,7 @@
 mbr:
 	B	mbr1			// branch around the following word
 
-numSectors:
+bootmgrSize:
 	.WORD	0			// filled in when the MBR and the
 					// boot manager are combined
 
@@ -39,9 +39,9 @@ strloop:
 	ADD	R8,R8,1			// bump pointer
 	B	strloop			// next char
 load:
-	MOV	R8,startSector		// first sector to load
+	MOV	R8,bootmgrStart		// first sector to load
 	MOV	R9,loadAddr		// gets loaded here
-	MOV	R10,numSectors		// sector count
+	MOV	R10,bootmgrSize		// sector count
 	LDW	R10,R10,0
 ldloop:
 	MOV	R1,R8			// first argument: sector
