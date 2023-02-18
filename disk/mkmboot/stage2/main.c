@@ -31,8 +31,8 @@ typedef struct {
 PartEntry partTbl[4];
 
 
-unsigned int partStart;
-unsigned int partSize;
+extern unsigned int partStart;	/* absolute sector number */
+extern unsigned int partSize;	/* in sectors */
 
 
 /**************************************************************/

@@ -52,3 +52,8 @@ clrtest:
 	MOV	R2,partSize
 	LDW	R2,R2,0
 	B	VBR_LD_ADDR		// and jump to VBR
+
+partStart:
+	.WORD	0
+partSize:
+	.WORD	0
