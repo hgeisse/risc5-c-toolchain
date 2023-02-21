@@ -5,6 +5,10 @@
 
 BUILD = ..
 
+DSK_IMG = disk.img
+DSK_SIZ = 100M
+DSK_PART = $(BUILD)/disk/disk.part
+
 BOOT =
 
 all:
@@ -39,8 +43,14 @@ all:
 		@echo "   and press the reset button."
 		@echo ""
 
+$(DSK_IMG):
+		$(BUILD)/bin/mkdisk $(DSK_IMG) $(DSK_SIZ)
+		$(BUILD)/bin/mkpart $(DSK_IMG) $(DSK_PART)
+		$(BUILD)/bin/wrtvbr $(DSK_IMG) 0
+
 sercomm:
 		$(BUILD)/bin/sercomm $(BOOT)
 
 clean:
 		rm -f *~
+		rm -f $(DSK_IMG)
