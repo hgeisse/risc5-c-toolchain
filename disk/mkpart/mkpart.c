@@ -261,13 +261,13 @@ int main(int argc, char *argv[]) {
     }
     /* correct values if entry is empty */
     if (type == 0) {
-      if (boot != 0 || start != 0 || size != 0) {
+      if (boot != 0 || size != 0) {
         printf("Warning: null entry corrected in config file '%s', line %d\n",
                confName, lineNumber);
-        boot = 0;
-        start = 0;
-        size = 0;
       }
+      boot = 0;
+      start = 0;
+      size = 0;
     }
     /* fill entry */
     if (currPart > 3) {
