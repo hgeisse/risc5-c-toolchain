@@ -11,8 +11,8 @@
 
 
 #define SECTOR_SIZE	512
-#define SECTS_PER_MIB	2048
-#define NEXT_MIB(x)	(((x) + SECTS_PER_MIB - 1) & ~(SECTS_PER_MIB - 1))
+#define SECTS_PER_MB	((1 << 20) / SECTOR_SIZE)
+#define NEXT_MB(x)	(((x) + SECTS_PER_MB - 1) & ~(SECTS_PER_MB - 1))
 
 #define MIN_RSV_SECTS	64	/* min # sectors before first partition */
 
@@ -225,7 +225,7 @@ int main(int argc, char *argv[]) {
     }
     /* start */
     if (strcmp(tokens[2], "+") == 0) {
-      start = NEXT_MIB(currSect);
+      start = NEXT_MB(currSect);
     } else {
       start = strtoul(tokens[2], &endp, 0);
       if (*endp != '\0') {
@@ -233,7 +233,7 @@ int main(int argc, char *argv[]) {
           error("cannot read start sector in config file '%s', line %d",
                 confName, lineNumber);
         }
-        start *= SECTS_PER_MIB;
+        start *= SECTS_PER_MB;
       }
     }
     if (type != 0) {
@@ -250,7 +250,7 @@ int main(int argc, char *argv[]) {
         error("cannot read partition size in config file '%s', line %d",
               confName, lineNumber);
       }
-      size *= SECTS_PER_MIB;
+      size *= SECTS_PER_MB;
     }
     if (type != 0) {
       currSect += size;
@@ -292,7 +292,7 @@ int main(int argc, char *argv[]) {
   printf("  #  type  b  start       size\n");
   for (currPart = 0; currPart < 4; currPart++) {
     printf("  %d  0x%02X  %c  0x%08X  0x%08X\n",
-           currPart,
+           currPart + 1,
            partTbl[currPart].type,
            partTbl[currPart].boot & 0x80 ? '*' : '-',
            partTbl[currPart].start,
