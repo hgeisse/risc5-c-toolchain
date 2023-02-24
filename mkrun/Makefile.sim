@@ -46,7 +46,7 @@ boot-disk:	$(DSK_IMG)
 $(DSK_IMG):
 		$(BUILD)/bin/mkdisk $(DSK_IMG) $(DSK_SIZ)
 		$(BUILD)/bin/mkpart $(DSK_IMG) $(DSK_PART)
-		$(BUILD)/bin/wrtvbr $(DSK_IMG) 0
+		$(BUILD)/bin/wrtvbr $(DSK_IMG) 4
 
 sercomm:
 		$(BUILD)/bin/sercomm $(BOOT)
