@@ -43,7 +43,7 @@ int main(void) {
   int i;
   char line[LINE_SIZE];
   char *endp;
-  int n;
+  int pn, pi;
 
   printf("Bootstrap manager executing...\n");
   sdcardRead(0, buf);
@@ -53,7 +53,7 @@ int main(void) {
     printf("  #  type  b  start       size\n");
     for (i = 0; i < 4; i++) {
       printf("  %d  0x%02X  %c  0x%08X  0x%08X\n",
-             i,
+             i + 1,
              partTbl[i].type,
              partTbl[i].boot & 0x80 ? '*' : '-',
              partTbl[i].start,
@@ -63,30 +63,31 @@ int main(void) {
     if (line[0] == '\0') {
       continue;
     }
-    n = str2int(line, &endp);
-    if (*endp != '\0' || n < 0 || n > 3) {
+    pn = str2int(line, &endp);
+    if (*endp != '\0' || pn < 1 || pn > 4) {
       printf("illegal partition number\n");
       continue;
     }
-    if (partTbl[n].type == 0) {
-      printf("partition %d does not contain a file system\n", n);
+    pi = pn - 1;
+    if (partTbl[pi].type == 0) {
+      printf("partition %d does not contain a file system\n", pn);
       continue;
     }
-    if ((partTbl[n].boot & 0x80) == 0) {
-      printf("partition %d is not bootable\n", n);
+    if ((partTbl[pi].boot & 0x80) == 0) {
+      printf("partition %d is not bootable\n", pn);
       continue;
     }
     /* load boot sector of selected partition (aka VBR) */
-    sdcardRead(partTbl[n].start, VBR_LD_ADDR);
+    sdcardRead(partTbl[pi].start, VBR_LD_ADDR);
     /* check for signature */
     if ((*((unsigned char *) VBR_LD_ADDR + 0x1FE) != 0x55) ||
         (*((unsigned char *) VBR_LD_ADDR + 0x1FF) != 0xAA)) {
-      printf("VBR of partition %d has no signature\n", n);
+      printf("VBR of partition %d has no signature\n", pn);
       continue;
     }
     /* we have a valid VBR: success */
-    partStart = partTbl[n].start;
-    partSize = partTbl[n].size;
+    partStart = partTbl[pi].start;
+    partSize = partTbl[pi].size;
     return 0;
   }
   /* if we ever get here, the bootstrap failed */
