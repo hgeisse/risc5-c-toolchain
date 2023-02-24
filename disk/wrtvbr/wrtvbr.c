@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
   PartEntry *partTbl;
   int i;
   char *endp;
-  int partno;
+  int pn, pi;
   unsigned int partStart;
   unsigned int partSize;
 
@@ -89,34 +89,35 @@ int main(int argc, char *argv[]) {
   printf("  #  type  b  start       size\n");
   for (i = 0; i < 4; i++) {
     printf("  %d  0x%02X  %c  0x%08X  0x%08X\n",
-           i,
+           i + 1,
            partTbl[i].type,
            partTbl[i].boot & 0x80 ? '*' : '-',
            partTbl[i].start,
            partTbl[i].size);
   }
   /* get partition number, check type and bootable flag */
-  partno = strtol(partNmbr, &endp, 10);
+  pn = strtol(partNmbr, &endp, 10);
   if (*endp != '\0') {
     error("cannot read partition number");
   }
-  if (partno < 0 || partno > 3) {
-    error("illegal partition number %d", partno);
+  if (pn < 1 || pn > 4) {
+    error("illegal partition number %d", pn);
   }
-  if (partTbl[partno].type == 0) {
-    error("partition %d does not contain a file system", partno);
+  pi = pn - 1;
+  if (partTbl[pi].type == 0) {
+    error("partition %d does not contain a file system", pn);
   }
-  if ((partTbl[partno].boot & 0x80) == 0) {
-    error("partition %d is not bootable", partno);
+  if ((partTbl[pi].boot & 0x80) == 0) {
+    error("partition %d is not bootable", pn);
   }
   /* determine start and size of partition */
-  partStart = partTbl[partno].start;
-  partSize = partTbl[partno].size;
+  partStart = partTbl[pi].start;
+  partSize = partTbl[pi].size;
   if (partSize == 0) {
-    error("partition %d has no sectors", partno);
+    error("partition %d has no sectors", pn);
   }
   /* copy VBR to partition on disk image */
-  printf("Now going to copy the VBR to partition %d...\n", partno);
+  printf("Now going to copy the VBR to partition %d...\n", pn);
   fseek(disk, partStart * SECTOR_SIZE, SEEK_SET);
   if (fwrite(vbr, 1, SECTOR_SIZE, disk) != SECTOR_SIZE) {
     error("cannot write VBR to disk image '%s'", diskName);
