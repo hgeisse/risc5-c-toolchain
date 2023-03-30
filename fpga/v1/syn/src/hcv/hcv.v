@@ -406,8 +406,8 @@ module hcv(pclk, clk, rst,
   end
 
   reg [19:0] fb_addr_2;
-  wire [19:0] fb_data_rd_2;
-  reg [19:0] fb_data_wr_2;
+  reg [15:0] fb_data_wr_2;
+  wire [15:0] fb_data_rd_2;
 
   always @(posedge pclk) begin
     if (fb_addr_latch) begin
@@ -433,17 +433,17 @@ module hcv(pclk, clk, rst,
   assign fb_data_rd_2[15:0] = sram_dq[15:0];
 
   // fake pixel data from pixel address
-//  wire [9:0] x;
-//  wire [9:0] y;
-//  wire border;
-//  assign x[9:0] = fb_addr_2[ 9: 0];
-//  assign y[9:0] = fb_addr_2[19:10];
-//  assign border =
-//    (x[9:0] == 10'd0) |
-//    (x[9:0] == 10'd1023) |
-//    (y[9:0] == 10'd0) |
-//    (y[9:0] == 10'd767);
-//  assign fb_data_rd_2[15:0] = border ? 16'hFFFF : 16'h0000;
+  wire [9:0] fake_x;
+  wire [9:0] fake_y;
+  wire fake_border;
+  assign fake_x[9:0] = fb_addr_2[ 9: 0];
+  assign fake_y[9:0] = fb_addr_2[19:10];
+  assign fake_border =
+    (fake_x[9:0] == 10'd0) |
+    (fake_x[9:0] == 10'd1023) |
+    (fake_y[9:0] == 10'd0) |
+    (fake_y[9:0] == 10'd767);
+  //assign fb_data_rd_2[15:0] = fake_border ? 16'hFFFF : 16'h0000;
 
   // stage 3: video memory data latch
 
