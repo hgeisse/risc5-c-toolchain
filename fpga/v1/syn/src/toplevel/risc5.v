@@ -57,7 +57,14 @@ module risc5(clk_in,
              lcd_en,
              lcd_rw,
              lcd_rs,
-             lcd_data
+             lcd_data,
+             sram_addr,
+             sram_dq,
+             sram_ce_n,
+             sram_oe_n,
+             sram_we_n,
+             sram_ub_n,
+             sram_lb_n
             );
 
     // clock and reset
@@ -121,6 +128,14 @@ module risc5(clk_in,
     output lcd_rw;
     output lcd_rs;
     inout [7:0] lcd_data;
+    // SRAM
+    output [19:0] sram_addr;
+    inout [15:0] sram_dq;
+    output sram_ce_n;
+    output sram_oe_n;
+    output sram_we_n;
+    output sram_ub_n;
+    output sram_lb_n;
 
   // clk_rst
   wire clk_ok;				// clocks stable
@@ -146,7 +161,11 @@ module risc5(clk_in,
   wire [31:0] ram_dout;			// ram data output
   wire ram_ack;				// ram acknowledge
   // vid
-  wire vid_stb;				// video buffer strobe
+//  wire vid_stb;				// video buffer strobe
+  // hcv
+  wire hcv_stb;				// high color video strobe
+  wire [31:0] hcv_dout;			// high color data output
+  wire hcv_ack;				// high color video acknowledge
   // i/o
   wire i_o_stb;				// i/o strobe
   // tmr
@@ -260,14 +279,43 @@ module risc5(clk_in,
     .sdram_dq(sdram_dq[31:0])
   );
 
-  vid vid_0(
+//  vid vid_0(
+//    .pclk(pclk),
+//    .clk(clk),
+//    .rst(rst),
+//    .stb(vid_stb),
+//    .we(bus_we),
+//    .addr(bus_addr[16:2]),
+//    .data_in(bus_dout[31:0]),
+//    .hsync(vga_hsync),
+//    .vsync(vga_vsync),
+//    .pxclk(vga_clk),
+//    .sync_n(vga_sync_n),
+//    .blank_n(vga_blank_n),
+//    .r(vga_r[7:0]),
+//    .g(vga_g[7:0]),
+//    .b(vga_b[7:0])
+//  );
+
+  hcv hcv_0(
     .pclk(pclk),
     .clk(clk),
     .rst(rst),
-    .stb(vid_stb),
+    .stb(hcv_stb),
     .we(bus_we),
-    .addr(bus_addr[16:2]),
+    .addr(bus_addr[21:2]),
     .data_in(bus_dout[31:0]),
+    .data_out(hcv_dout[31:0]),
+    .ack(hcv_ack),
+    //----------
+    .sram_addr(sram_addr[19:0]),
+    .sram_dq(sram_dq[15:0]),
+    .sram_ce_n(sram_ce_n),
+    .sram_oe_n(sram_oe_n),
+    .sram_we_n(sram_we_n),
+    .sram_ub_n(sram_ub_n),
+    .sram_lb_n(sram_lb_n),
+    //----------
     .hsync(vga_hsync),
     .vsync(vga_vsync),
     .pxclk(vga_clk),
@@ -433,14 +481,20 @@ module risc5(clk_in,
   assign prom_stb =
     (bus_stb == 1'b1 && bus_addr[23:12] == 12'hFFE) ? 1'b1 : 1'b0;
 
-  // RAM: (16 MB - 8 KB) @ 0x000000
+  // RAM: (16 MB - 8 KB) @ 0x000000, but exclude HCV memory
   assign ram_stb =
-    (bus_stb == 1'b1 && bus_addr[23:13] != 11'h7FF) ? 1'b1 : 1'b0;
+    ((bus_stb == 1'b1 && bus_addr[23:13] != 11'h7FF) &&
+     (hcv_stb == 1'b0)) ? 1'b1 : 1'b0;
 
   // VID: 96 KB @ 0xFE0000
-  assign vid_stb =
-    (bus_stb == 1'b1 && bus_addr[23:17] == 7'h7F
-                     && bus_addr[16:15] != 2'b11) ? 1'b1 : 1'b0;
+//  assign vid_stb =
+//    (bus_stb == 1'b1 && bus_addr[23:17] == 7'h7F
+//                     && bus_addr[16:15] != 2'b11) ? 1'b1 : 1'b0;
+
+  // HCV: 3 MB @ 0xC00000
+  assign hcv_stb =
+    (bus_stb == 1'b1 && bus_addr[23:22] == 2'b11
+                     && bus_addr[21:20] != 2'b11) ? 1'b1 : 1'b0;
 
   // I/O: 64 bytes (16 words) @ 0xFFFFC0
   assign i_o_stb =
@@ -479,6 +533,7 @@ module risc5(clk_in,
   assign bus_din[31:0] =
     prom_stb  ? prom_dout[31:0]  :
     ram_stb   ? ram_dout[31:0]   :
+    hcv_stb   ? hcv_dout[31:0]   :
     tmr_stb   ? tmr_dout[31:0]   :
     bio_stb   ? bio_dout[31:0]   :
     ser_0_stb ? ser_0_dout[31:0] :
@@ -494,6 +549,7 @@ module risc5(clk_in,
   assign bus_ack =
     prom_stb  ? prom_ack  :
     ram_stb   ? ram_ack   :
+    hcv_stb   ? hcv_ack   :
     tmr_stb   ? tmr_ack   :
     bio_stb   ? bio_ack   :
     ser_0_stb ? ser_0_ack :
