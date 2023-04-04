@@ -323,7 +323,10 @@ module risc5(clk_in,
     .blank_n(vga_blank_n),
     .r(vga_r[7:0]),
     .g(vga_g[7:0]),
-    .b(vga_b[7:0])
+    .b(vga_b[7:0]),
+    //----------
+    .error(led_r[17]),
+    .checking(led_r[16])
   );
 
   tmr tmr_0(
@@ -346,7 +349,7 @@ module risc5(clk_in,
     .data_out(bio_dout[31:0]),
     .ack(bio_ack),
     .led_g(led_g[8:0]),
-    .led_r(led_r[17:0]),
+    .led_r(led_r[15:0]),
     .hex7_n(hex7_n[6:0]),
     .hex6_n(hex6_n[6:0]),
     .hex5_n(hex5_n[6:0]),

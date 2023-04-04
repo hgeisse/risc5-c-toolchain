@@ -14,7 +14,8 @@ module hcv(pclk, clk, rst,
            sram_oe_n, sram_we_n,
            sram_ub_n, sram_lb_n,
            hsync, vsync, pxclk,
-           sync_n, blank_n, r, g, b);
+           sync_n, blank_n, r, g, b,
+           error, checking);
     // internal interface
     input pclk;
     input clk;
@@ -42,6 +43,9 @@ module hcv(pclk, clk, rst,
     output [7:0] r;
     output [7:0] g;
     output [7:0] b;
+    // error indicator
+    output reg error;
+    output checking;
 
   //----------------------------
   // bus interface
@@ -59,6 +63,7 @@ module hcv(pclk, clk, rst,
   //   init_data[15:0]
   //   init_stb
   //   init_we
+  //   init_active
 
   wire init_ack;
 
@@ -143,24 +148,28 @@ module hcv(pclk, clk, rst,
     endcase
   end
 
+  wire init_active;
+  assign init_active = (init_state[1:0] != 2'b11);
+
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
   // !!!!! preliminary
-
-  assign data_out[31:0] = data_in[31:0];
-  assign ack = stb;
 
   wire fb_bus_stb;
   wire fb_bus_we;
   wire [19:0] fb_bus_addr;
   wire [15:0] fb_bus_data_wr;
+  reg [15:0] fb_bus_data_rd;
   reg fb_bus_ack;
 
-  assign fb_bus_stb = init_stb;
-  assign fb_bus_we = init_we;
-  assign fb_bus_addr[19:0] = init_addr[19:0];
-  assign fb_bus_data_wr[15:0] = init_data[15:0];
+  assign fb_bus_stb = init_active ? init_stb : stb;
+  assign fb_bus_we = init_active ? init_we : we;
+  assign fb_bus_addr[19:0] = init_active ? init_addr[19:0] : addr[19:0];
+  assign fb_bus_data_wr[15:0] = init_active ? init_data[15:0] : data_in[15:0];
   assign init_ack = fb_bus_ack;
+
+  assign data_out[31:0] = { 16'h0000, fb_bus_data_rd[15:0] };
+  assign ack = fb_bus_ack;
 
   //----------------------------
   // frame buffer control
@@ -168,14 +177,14 @@ module hcv(pclk, clk, rst,
 
   // state transitions
 
-  reg [2:0] fb_state;
-  reg [2:0] fb_next;
+  reg [3:0] fb_state;
+  reg [3:0] fb_next;
 
   always @(posedge pclk) begin
     if (rst) begin
-      fb_state[2:0] <= 3'b000;
+      fb_state[3:0] <= 4'b0000;
     end else begin
-      fb_state[2:0] <= fb_next[2:0];
+      fb_state[3:0] <= fb_next[3:0];
     end
   end
 
@@ -187,73 +196,109 @@ module hcv(pclk, clk, rst,
   reg fb_data_rd_latch;
 
   always @(*) begin
-    case (fb_state[2:0])
-      3'b000:  // idle
+    case (fb_state[3:0])
+      4'b0000:  // idle
         begin
           if (~fb_bus_stb) begin
-            fb_next[2:0] = 3'b000;
+            fb_next[3:0] = 4'b0000;
             fb_addr_select = 1'b0;
             fb_addr_latch = 1'b1;
             fb_data_wr_latch = 1'b0;
-            fb_data_rd_latch = 1'b1;
+            fb_data_rd_latch = 1'b0;
             fb_bus_ack = 1'b0;
           end else begin
             if (fb_bus_we) begin
-              fb_next[2:0] = 3'b001;
+              fb_next[3:0] = 4'b0001;
               fb_addr_select = 1'b1;
               fb_addr_latch = 1'b1;
               fb_data_wr_latch = 1'b1;
               fb_data_rd_latch = 1'b0;
               fb_bus_ack = 1'b0;
             end else begin
-              fb_next[2:0] = 3'b000;
-              fb_addr_select = 1'b0;
+              fb_next[3:0] = 4'b0101;
+              fb_addr_select = 1'b1;
               fb_addr_latch = 1'b1;
               fb_data_wr_latch = 1'b0;
-              fb_data_rd_latch = 1'b1;
+              fb_data_rd_latch = 1'b0;
               fb_bus_ack = 1'b0;
             end
           end
         end
-      3'b001:  // write 1
+      4'b0001:  // write 1
         begin
-          fb_next[2:0] = 3'b010;
+          fb_next[3:0] = 4'b0010;
           fb_addr_select = 1'b0;
           fb_addr_latch = 1'b0;
           fb_data_wr_latch = 1'b0;
           fb_data_rd_latch = 1'b0;
           fb_bus_ack = 1'b0;
         end
-      3'b010:  // write 2
+      4'b0010:  // write 2
         begin
-          fb_next[2:0] = 3'b011;
+          fb_next[3:0] = 4'b0011;
           fb_addr_select = 1'b0;
           fb_addr_latch = 1'b0;
           fb_data_wr_latch = 1'b0;
           fb_data_rd_latch = 1'b0;
           fb_bus_ack = 1'b0;
         end
-      3'b011:  // write 3
+      4'b0011:  // write 3
         begin
-          fb_next[2:0] = 3'b100;
+          fb_next[3:0] = 4'b0100;
           fb_addr_select = 1'b0;
-          fb_addr_latch = 1'b0;
+          fb_addr_latch = 1'b1;
+          fb_data_wr_latch = 1'b0;
+          fb_data_rd_latch = 1'b0;
+          fb_bus_ack = 1'b1;
+        end
+      4'b0100:  // write 4
+        begin
+          fb_next[3:0] = 4'b0000;
+          fb_addr_select = 1'b0;
+          fb_addr_latch = 1'b1;
+          fb_data_wr_latch = 1'b0;
+          fb_data_rd_latch = 1'b0;
+          fb_bus_ack = 1'b1;
+        end
+      4'b0101:  // read 1
+        begin
+          fb_next[3:0] = 4'b0110;
+          fb_addr_select = 1'b0;
+          fb_addr_latch = 1'b1;
           fb_data_wr_latch = 1'b0;
           fb_data_rd_latch = 1'b0;
           fb_bus_ack = 1'b0;
         end
-      3'b100:  // write 4
+      4'b0110:  // read 2
         begin
-          fb_next[2:0] = 3'b000;
+          fb_next[3:0] = 4'b0111;
           fb_addr_select = 1'b0;
           fb_addr_latch = 1'b1;
           fb_data_wr_latch = 1'b0;
           fb_data_rd_latch = 1'b1;
+          fb_bus_ack = 1'b0;
+        end
+      4'b0111:  // read 3
+        begin
+          fb_next[3:0] = 4'b1000;
+          fb_addr_select = 1'b0;
+          fb_addr_latch = 1'b1;
+          fb_data_wr_latch = 1'b0;
+          fb_data_rd_latch = 1'b0;
+          fb_bus_ack = 1'b1;
+        end
+      4'b1000:  // read 4
+        begin
+          fb_next[3:0] = 4'b0000;
+          fb_addr_select = 1'b0;
+          fb_addr_latch = 1'b1;
+          fb_data_wr_latch = 1'b0;
+          fb_data_rd_latch = 1'b0;
           fb_bus_ack = 1'b1;
         end
       default:  // never reached
         begin
-          fb_next[2:0] = 3'b000;
+          fb_next[3:0] = 4'b0000;
           fb_addr_select = 1'b0;
           fb_addr_latch = 1'b0;
           fb_data_wr_latch = 1'b0;
@@ -270,34 +315,58 @@ module hcv(pclk, clk, rst,
   reg fb_dqe_la;
 
   always @(*) begin
-    case (fb_next[2:0])
-      3'b000:  // idle
+    case (fb_next[3:0])
+      4'b0000:  // idle
         begin
           fb_oe_la = 1'b1;
           fb_we_la = 1'b0;
           fb_dqe_la = 1'b0;
         end
-      3'b001:  // write 1
+      4'b0001:  // write 1
         begin
           fb_oe_la = 1'b0;
           fb_we_la = 1'b0;
           fb_dqe_la = 1'b0;
         end
-      3'b010:  // write 2
+      4'b0010:  // write 2
         begin
           fb_oe_la = 1'b0;
           fb_we_la = 1'b1;
           fb_dqe_la = 1'b1;
         end
-      3'b011:  // write 3
+      4'b0011:  // write 3
         begin
           fb_oe_la = 1'b0;
           fb_we_la = 1'b0;
           fb_dqe_la = 1'b1;
         end
-      3'b100:  // write 4
+      4'b0100:  // write 4
         begin
           fb_oe_la = 1'b0;
+          fb_we_la = 1'b0;
+          fb_dqe_la = 1'b0;
+        end
+      4'b0101:  // read 1
+        begin
+          fb_oe_la = 1'b1;
+          fb_we_la = 1'b0;
+          fb_dqe_la = 1'b0;
+        end
+      4'b0110:  // read 2
+        begin
+          fb_oe_la = 1'b1;
+          fb_we_la = 1'b0;
+          fb_dqe_la = 1'b0;
+        end
+      4'b0111:  // read 3
+        begin
+          fb_oe_la = 1'b1;
+          fb_we_la = 1'b0;
+          fb_dqe_la = 1'b0;
+        end
+      4'b1000:  // read 4
+        begin
+          fb_oe_la = 1'b1;
           fb_we_la = 1'b0;
           fb_dqe_la = 1'b0;
         end
@@ -393,16 +462,14 @@ module hcv(pclk, clk, rst,
 
   // stage 2: video memory access
 
-  reg hblnk_2;
   reg hsync_2;
-  reg vblnk_2;
   reg vsync_2;
+  reg blank_2;
 
   always @(posedge pclk) begin
-    hblnk_2 <= hblnk_1;
     hsync_2 <= hsync_1;
-    vblnk_2 <= vblnk_1;
     vsync_2 <= vsync_1;
+    blank_2 <= hblnk_1 | vblnk_1;
   end
 
   reg [19:0] fb_addr_2;
@@ -436,6 +503,7 @@ module hcv(pclk, clk, rst,
   wire [9:0] fake_x;
   wire [9:0] fake_y;
   wire fake_border;
+  wire [15:0] fake_data_rd_2;
   assign fake_x[9:0] = fb_addr_2[ 9: 0];
   assign fake_y[9:0] = fb_addr_2[19:10];
   assign fake_border =
@@ -443,49 +511,111 @@ module hcv(pclk, clk, rst,
     (fake_x[9:0] == 10'd1023) |
     (fake_y[9:0] == 10'd0) |
     (fake_y[9:0] == 10'd767);
-  //assign fb_data_rd_2[15:0] = fake_border ? 16'hFFFF : 16'h0000;
+  assign fake_data_rd_2[15:0] = fake_border ? 16'h739C : 16'h0000;
 
   // stage 3: video memory data latch
 
-  reg hblnk_3;
   reg hsync_3;
-  reg vblnk_3;
   reg vsync_3;
+  reg blank_3;
 
   always @(posedge pclk) begin
-    hblnk_3 <= hblnk_2;
     hsync_3 <= hsync_2;
-    vblnk_3 <= vblnk_2;
     vsync_3 <= vsync_2;
+    blank_3 <= blank_2;
   end
 
   reg [15:0] fb_data_rd_3;
 
+  // 13.333 ns (75 MHz) is not enough to access the SRAM on the board
+  // (address leaving FPGA + SRAM access time + data entering FPGA).
+  // Using the negative clock edge for latching the data does the
+  // trick: it stretches the data window to 1.5 clock cycles (20 ns).
+  // Consequently, this stage must be followed by a data resync stage.
+  always @(negedge pclk) begin
+    fb_data_rd_3[15:0] <= fb_data_rd_2[15:0];
+  end
+
+  // fake data latch
+  reg [15:0] fake_data_rd_3;
+  always @(posedge pclk) begin
+    fake_data_rd_3[15:0] <= fake_data_rd_2[15:0];
+  end
+
+  // stage 4: data resync
+
+  reg hsync_4;
+  reg vsync_4;
+  reg blank_4;
+
+  always @(posedge pclk) begin
+    hsync_4 <= hsync_3;
+    vsync_4 <= vsync_3;
+    blank_4 <= blank_3;
+  end
+
   always @(posedge pclk) begin
     if (fb_data_rd_latch) begin
-      fb_data_rd_3[15:0] <= fb_data_rd_2[15:0];
+      fb_bus_data_rd[15:0] <= fb_data_rd_3[15:0];
     end
   end
 
-  // stage 4: pixel stage for sync signals
+  reg [15:0] fb_data_rd_4;
+
+  always @(posedge pclk) begin
+    if (~fb_data_rd_latch) begin
+      fb_data_rd_4[15:0] <= fb_data_rd_3[15:0];
+    end
+  end
+
+  // real/fake data comparator
+  reg [15:0] fake_data_rd_4;
+  always @(posedge pclk) begin
+    if (~fb_data_rd_latch) begin
+      fake_data_rd_4[15:0] <= fake_data_rd_3[15:0];
+    end
+  end
+  reg [28:0] delay;
+  wire mismatch;
+  always @(posedge pclk) begin
+    if (rst) begin
+      delay[28:0] <= 29'd0;
+    end else begin
+      if (~delay[28]) begin
+        delay[28:0] <= delay[28:0] + 29'd1;
+      end
+    end
+  end
+  assign checking = delay[28];
+  assign mismatch = (fb_data_rd_4[14:0] != fake_data_rd_4[14:0]);
+  always @(posedge pclk) begin
+    if (rst) begin
+      error <= 1'b0;
+    end else begin
+      if (checking & mismatch) begin
+        error <= error | mismatch;
+      end
+    end
+  end
+
+  // stage 5: pixel stage for sync signals
   // these are not buffered externally and thus must be buffered here
 
   always @(posedge pclk) begin
-    hsync <= ~hsync_3;
-    vsync <= ~vsync_3;
+    hsync <= ~hsync_4;
+    vsync <= ~vsync_4;
   end
 
-  // stage 4: pixel stage for color signals
+  // stage 5: pixel stage for color signals
   // these are buffered by the DAC and thus must not be buffered here
 
   assign pxclk = pclk;
+
   assign sync_n = 1'b0;
-  assign blank_n = ~(hblnk_3 | vblnk_3);
-  assign r[7:0] = ~blank_n ? 8'h00 : { fb_data_rd_3[14:10],
-                                       {3{ fb_data_rd_3[10] }} };
-  assign g[7:0] = ~blank_n ? 8'h00 : { fb_data_rd_3[ 9: 5],
-                                       {3{ fb_data_rd_3[ 5] }} };
-  assign b[7:0] = ~blank_n ? 8'h00 : { fb_data_rd_3[ 4: 0],
-                                       {3{ fb_data_rd_3[ 0] }} };
+  assign blank_n = ~blank_4;
+
+  assign r[7:0] = { fb_data_rd_4[14:10], 3'b000 };
+  assign g[7:0] = { fb_data_rd_4[ 9: 5], 3'b000 };
+  assign b[7:0] = { fb_data_rd_4[ 4: 0], 3'b000 };
 
 endmodule
