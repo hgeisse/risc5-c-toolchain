@@ -5,10 +5,10 @@
 BUILD = ../../build
 
 SRC = start.s main.c iolib.c biolib.c
-EXE = fbtest2
-MAP = fbtest2.map
-BIN = fbtest2.bin
-MEM = fbtest2.mem
+EXE = fbtest-hw
+MAP = fbtest-hw.map
+BIN = fbtest-hw.bin
+MEM = fbtest-hw.mem
 
 all:		$(BIN) $(MEM)
 
