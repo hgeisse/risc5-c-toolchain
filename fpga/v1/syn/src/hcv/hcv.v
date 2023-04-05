@@ -14,8 +14,7 @@ module hcv(pclk, clk, rst,
            sram_oe_n, sram_we_n,
            sram_ub_n, sram_lb_n,
            hsync, vsync, pxclk,
-           sync_n, blank_n, r, g, b,
-           error, checking);
+           sync_n, blank_n, r, g, b);
     // internal interface
     input pclk;
     input clk;
@@ -43,117 +42,10 @@ module hcv(pclk, clk, rst,
     output [7:0] r;
     output [7:0] g;
     output [7:0] b;
-    // error indicator
-    output reg error;
-    output checking;
 
   //----------------------------
   // bus interface
   //----------------------------
-
-  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-  //
-  // frame buffer initialization circuit
-  //
-  // inputs:
-  //   init_ack
-  // outputs:
-  //   init_addr[19:0]
-  //   init_data[15:0]
-  //   init_stb
-  //   init_we
-  //   init_active
-
-  wire init_ack;
-
-  reg [19:0] init_addr;
-  reg init_incr;
-
-  always @(posedge pclk) begin
-    if (rst) begin
-      init_addr[19:0] <= 20'h0;
-    end else begin
-      if (init_incr) begin
-        init_addr[19:0] <= init_addr[19:0] + 20'h1;
-      end
-    end
-  end
-
-  wire [9:0] init_x;
-  wire [9:0] init_y;
-  wire init_border;
-  wire [15:0] init_data;
-
-  assign init_x[9:0] = init_addr[ 9: 0];
-  assign init_y[9:0] = init_addr[19:10];
-  assign init_border =
-    (init_x[9:0] == 10'd0) |
-    (init_x[9:0] == 10'd1023) |
-    (init_y[9:0] == 10'd0) |
-    (init_y[9:0] == 10'd767);
-  assign init_data[15:0] = init_border ? 16'h739C : 16'h0000;
-
-  reg [1:0] init_state;
-  reg [1:0] init_next;
-  reg init_stb;
-  reg init_we;
-
-  always @(posedge pclk) begin
-    if (rst) begin
-      init_state[1:0] <= 2'b00;
-    end else begin
-      init_state[1:0] <= init_next[1:0];
-    end
-  end
-
-  always @(*) begin
-    case (init_state[1:0])
-      2'b00:  // reset
-        begin
-          init_next[1:0] = 2'b01;
-          init_incr = 1'b0;
-          init_stb = 1'b0;
-          init_we = 1'b0;
-        end
-      2'b01:  // write
-        begin
-          if (~init_ack) begin
-            init_next[1:0] = 2'b01;
-          end else begin
-            init_next[1:0] = 2'b10;
-          end
-          init_incr = 1'b0;
-          init_stb = 1'b1;
-          init_we = 1'b1;
-        end
-      2'b10:  // inc
-        begin
-          if (init_addr[19:0] != 20'hFFFFF) begin
-            init_next[1:0] = 2'b01;
-          end else begin
-            init_next[1:0] = 2'b11;
-          end
-          init_incr = 1'b1;
-          init_stb = 1'b0;
-          init_we = 1'b0;
-        end
-      2'b11:  // stop
-        begin
-          init_next[1:0] = 2'b11;
-          init_incr = 1'b0;
-          init_stb = 1'b0;
-          init_we = 1'b0;
-        end
-    endcase
-  end
-
-  wire init_active;
-  assign init_active = (init_state[1:0] != 2'b11);
-
-  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-  // !!!!! preliminary
 
   wire fb_bus_stb;
   wire fb_bus_we;
@@ -162,11 +54,10 @@ module hcv(pclk, clk, rst,
   reg [15:0] fb_bus_data_rd;
   reg fb_bus_ack;
 
-  assign fb_bus_stb = init_active ? init_stb : stb;
-  assign fb_bus_we = init_active ? init_we : we;
-  assign fb_bus_addr[19:0] = init_active ? init_addr[19:0] : addr[19:0];
-  assign fb_bus_data_wr[15:0] = init_active ? init_data[15:0] : data_in[15:0];
-  assign init_ack = fb_bus_ack;
+  assign fb_bus_stb = stb;
+  assign fb_bus_we = we;
+  assign fb_bus_addr[19:0] = addr[19:0];
+  assign fb_bus_data_wr[15:0] = data_in[15:0];
 
   assign data_out[31:0] = { 16'h0000, fb_bus_data_rd[15:0] };
   assign ack = fb_bus_ack;
@@ -499,20 +390,6 @@ module hcv(pclk, clk, rst,
 
   assign fb_data_rd_2[15:0] = sram_dq[15:0];
 
-  // fake pixel data from pixel address
-  wire [9:0] fake_x;
-  wire [9:0] fake_y;
-  wire fake_border;
-  wire [15:0] fake_data_rd_2;
-  assign fake_x[9:0] = fb_addr_2[ 9: 0];
-  assign fake_y[9:0] = fb_addr_2[19:10];
-  assign fake_border =
-    (fake_x[9:0] == 10'd0) |
-    (fake_x[9:0] == 10'd1023) |
-    (fake_y[9:0] == 10'd0) |
-    (fake_y[9:0] == 10'd767);
-  assign fake_data_rd_2[15:0] = fake_border ? 16'h739C : 16'h0000;
-
   // stage 3: video memory data latch
 
   reg hsync_3;
@@ -534,12 +411,6 @@ module hcv(pclk, clk, rst,
   // Consequently, this stage must be followed by a data resync stage.
   always @(negedge pclk) begin
     fb_data_rd_3[15:0] <= fb_data_rd_2[15:0];
-  end
-
-  // fake data latch
-  reg [15:0] fake_data_rd_3;
-  always @(posedge pclk) begin
-    fake_data_rd_3[15:0] <= fake_data_rd_2[15:0];
   end
 
   // stage 4: data resync
@@ -565,36 +436,6 @@ module hcv(pclk, clk, rst,
   always @(posedge pclk) begin
     if (~fb_data_rd_latch) begin
       fb_data_rd_4[15:0] <= fb_data_rd_3[15:0];
-    end
-  end
-
-  // real/fake data comparator
-  reg [15:0] fake_data_rd_4;
-  always @(posedge pclk) begin
-    if (~fb_data_rd_latch) begin
-      fake_data_rd_4[15:0] <= fake_data_rd_3[15:0];
-    end
-  end
-  reg [28:0] delay;
-  wire mismatch;
-  always @(posedge pclk) begin
-    if (rst) begin
-      delay[28:0] <= 29'd0;
-    end else begin
-      if (~delay[28]) begin
-        delay[28:0] <= delay[28:0] + 29'd1;
-      end
-    end
-  end
-  assign checking = delay[28];
-  assign mismatch = (fb_data_rd_4[14:0] != fake_data_rd_4[14:0]);
-  always @(posedge pclk) begin
-    if (rst) begin
-      error <= 1'b0;
-    end else begin
-      if (checking & mismatch) begin
-        error <= error | mismatch;
-      end
     end
   end
 
